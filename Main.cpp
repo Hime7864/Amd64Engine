@@ -89,8 +89,10 @@ class AssemblyState
 {
 private:
 	UINT64 GPR[16];
-	UINT64 RIP;
+	BYTE* RIP;
 	EFLAGS FLAGS;
+	UINT64 GsBase;
+	UINT64 FsBase;
 	MNEMONICPREFIX Prefix;
 	bool service_mov();
 	bool decode_mnemonic();
@@ -102,7 +104,7 @@ public:
 
 void AssemblyState::SetRip(PVOID rip)
 {
-	RIP = (UINT64)rip;
+	RIP = (BYTE*)rip;
 	return;
 }
 
@@ -115,7 +117,7 @@ void AssemblyState::SetGPR(int index, UINT64 value)
 bool AssemblyState::service_mov()
 {
 	bool status = false;
-
+	printf("Servicing MOV instruction %02X\n", *(BYTE*)RIP);
 	auto opcode = (BYTE*)RIP;
 	switch (*opcode)
 	{
@@ -164,18 +166,86 @@ bool AssemblyState::service_mov()
 		break;
 	case 0x8B:
 	{
-		printf("MOV r16/32/64, r/m16/32/64\n");
-
 		auto modrm = (MODRM*)(opcode + 1);
+		
 		printf("Prefix: W=%d, R=%d, X=%d, B=%d, CS=%d, SS=%d, DS=%d, ES=%d, FS=%d, GS=%d, LOCK=%d, OperandSize=%d, AddressSize=%d\n",
 			Prefix.W, Prefix.R, Prefix.X, Prefix.B, Prefix.CS, Prefix.SS, Prefix.DS, Prefix.ES, Prefix.FS, Prefix.GS, Prefix.LOCK, Prefix.OperandSize, Prefix.AddressSize);
-		printf("ModRM: Register: %d, RegisterMemory: %d, Mode: %d\n", modrm->Register, modrm->RegisterMemory, modrm->Mode);
+		//printf("ModRM: Register: %d, RegisterMemory: %d, Mode: %d\n", modrm->Register, modrm->RegisterMemory, modrm->Mode);
 
 		switch (modrm->Mode)
 		{
 		case EMODE::MEM_0_BIT_DISP:
 		{
-			printf("Memory operand with no displacement\n");
+			auto modrm = (MODRM*)(opcode + 1);
+			printf("modrm %02X %i %i %i\n", *(BYTE*)(opcode + 1), modrm->Register, modrm->RegisterMemory, modrm->Mode);
+			if (modrm->Register == (BYTE)EGPR::RSP)
+			{
+				auto modrm2 = (MODRM*)(opcode + 2);
+				printf("modrm2 %02X %i %i %i\n", *(BYTE*)(opcode + 2), modrm2->Register, modrm2->RegisterMemory, modrm2->Mode);
+				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+
+				if (modrm2->Register == (BYTE)EGPR::RBP)
+				{
+					auto imm = *(INT32*)(opcode + 3);
+					auto ptr = GPR[modrm2->RegisterMemory] * mutiplier + imm;
+					if(Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+					if (Prefix.R)
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+						printf("MOV Reg, QWORD PTR [Imm+Reg*%i]\n", mutiplier);
+					}
+					else
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+						printf("MOV Reg, DWORD PTR [Imm+Reg*%i]\n", mutiplier);
+					}
+					RIP += 7;
+					status = true;
+				}
+				else
+				{
+					auto ptr = GPR[modrm2->Register] + GPR[modrm2->RegisterMemory] * mutiplier;
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+					if (Prefix.R)
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+						printf("MOV Reg, QWORD PTR [Reg+Reg*%i]\n", mutiplier);
+					}
+					else
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+						printf("MOV Reg, DWORD PTR [Reg+Reg*%i]\n", mutiplier);
+					}
+					RIP += 3;
+					status = true;
+				}
+			}
+			else
+			{
+				auto ptr = GPR[modrm->Register];
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+				if (Prefix.R)
+				{
+					//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+					printf("MOV Reg, QWORD PTR [Reg]\n");
+				}
+				else
+				{
+					//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+					printf("MOV Reg, DWORD PTR [Reg]\n");
+				}
+				RIP += 2;
+				status = true;
+			}
 		}break;
 		case EMODE::MEM_8_BIT_DISP:
 		{
@@ -187,6 +257,7 @@ bool AssemblyState::service_mov()
 		}break;
 		case EMODE::REG_TO_REG:
 		{
+			printf("MOV Reg, Reg\n");
 			if (Prefix.R)
 			{
 				GPR[modrm->Register] = GPR[modrm->RegisterMemory];
@@ -194,9 +265,9 @@ bool AssemblyState::service_mov()
 			else
 			{
 				GPR[modrm->Register] = GPR[modrm->RegisterMemory] & 0xFFFFFFFFull;
-				RIP += 2;
-				status = true;
 			}
+			RIP += 2;
+			status = true;
 		}break;
 		};
 
@@ -228,6 +299,7 @@ bool AssemblyState::service_mov()
 	case 0xB8:
 	{
 		auto reg = *opcode & 0x7;
+		printf("MOV r%d, imm32\n", reg);
 		auto imm = *(UINT32*)(opcode + 1);
 		GPR[reg] = (UINT64)imm;
 		RIP += 5;
@@ -260,34 +332,55 @@ bool AssemblyState::decode_mnemonic()
 {
 	bool status = false;
 
-	auto opcode = (BYTE*)RIP;
-
 	// first past for prefixes
 
 	Prefix = { 0 };
 
-	switch(*opcode)
+	switch (*RIP)
 	{
 	case 0x26:
 	{
 		Prefix.ES = 1;
-		opcode++;
+		RIP++;
 	}break;
 	case 0x2E:
 	{
 		Prefix.CS = 1;
-		opcode++;
+		RIP++;
 	}break;
 	case 0x36:
 	{
 		Prefix.SS = 1;
-		opcode++;
+		RIP++;
 	}break;
 	case 0x3E:
 	{
 		Prefix.DS = 1;
-		opcode++;
+		RIP++;
 	}break;
+	case 0x64:
+	{
+		Prefix.FS = 1;
+		RIP++;
+	}break;
+	case 0x65:
+	{
+		Prefix.GS = 1;
+		RIP++;
+	}break;
+	case 0x66:
+	{
+		Prefix.OperandSize = 1;//32-16 bit
+		RIP++;
+	}break;
+	case 0x67:
+	{
+		Prefix.AddressSize = 1;//64-32 bit
+		RIP++;
+	}break;
+	};
+	switch (*RIP)
+	{
 	case 0x40:
 	case 0x41:
 	case 0x42:
@@ -304,32 +397,13 @@ bool AssemblyState::decode_mnemonic()
 	case 0x4E:
 	case 0x4F:
 	{
-		Prefix.W = (*opcode >> 3) & 1;
-		Prefix.R = (*opcode >> 2) & 1;
-		Prefix.X = (*opcode >> 1) & 1;
-		Prefix.B = (*opcode >> 0) & 1;
-		opcode++;
+		Prefix.W = (*RIP >> 3) & 1;
+		Prefix.R = (*RIP >> 2) & 1;
+		Prefix.X = (*RIP >> 1) & 1;
+		Prefix.B = (*RIP >> 0) & 1;
+		RIP++;
 	}break;
-	case 0x64:
-	{
-		Prefix.FS = 1;
-		opcode++;
-	}break;
-	case 0x65:
-	{
-		Prefix.GS = 1;
-		opcode++;
-	}break;
-	case 0x66:
-	{
-		Prefix.OperandSize = 1;//32-16 bit
-		opcode++;
-	}break;
-	case 0x67:
-	{
-		Prefix.AddressSize = 1;//64-32 bit
-		opcode++;
-	}break;
+	
 	case 0x9B:
 	{
 		printf("Prefix 9B, Aborting\n");
@@ -338,7 +412,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0xF0:
 	{
 		Prefix.LOCK = 1;
-		opcode++;
+		RIP++;
 	}break;
 	case 0xF2:
 	{
@@ -355,16 +429,16 @@ bool AssemblyState::decode_mnemonic()
 	}
 
 	// second pass for 0F prefix
-	if(*opcode == 0x0F)
+	if(*RIP == 0x0F)
 	{
-		opcode++;
+		RIP++;
 		printf("Prefix 0F, Aborting\n");
 		return false;
 	}
 
-	printf("Decoding opcode: 0x%02X\n", *opcode);
+	printf("Decoding opcode: 0x%02X\n", *RIP);
 	// third pass for primary opcode
-	switch (*opcode)
+	switch (*RIP)
 	{
 	case 0x88:
 	case 0x89:
@@ -425,8 +499,9 @@ int main()
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0xA000);
 	engine->SetRip((PVOID)test);
-	auto code = "\x89\xC0\xB8\xDE\x00\x00\x00\xB8\xAD\xDE\x00\x00\x8B\x00\x8B\x04\x00\x8B\x04\xC0\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x8B\x04\x25\x60\x00\x00\x00\x65\x8B\x00\x65\x8B\x04\x00\x65\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x48\x89\xC0\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\x00\x00\x48\x8B\x00\x48\x8B\x04\x00\x48\x8B\x04\xC0\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x48\x8B\x04\x25\x60\x00\x00\x00\x65\x48\x8B\x00\x65\x48\x8B\x04\x00\x65\x48\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x89\x00\x89\x04\x00\x89\x04\xC0\x89\x04\xC5\xAD\xDE\x00\x00\x65\x89\x04\x25\x60\x00\x00\x00\x65\x89\x00\x65\x89\x04\x00\x65\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00\x48\x89\x00\x48\x89\x04\x00\x48\x89\x04\xC0\x48\x89\x04\xC5\xAD\xDE\x00\x00\x65\x48\x89\x04\x25\x60\x00\x00\x00\x65\x48\x89\x00\x65\x48\x89\x04\x00\x65\x48\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00";
-    engine->SetRip((PVOID)code);
+	auto code = "\x89\xC0\xB8\xDE\x00\x00\x00\xB8\xAD\xDE\x00\x00\x8B\x00\x8B\x04\x00\x8B\x04\x40\x8B\x04\x80\x8B\x04\xC0\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x8B\x04\x25\x60\x00\x00\x00\x65\x8B\x00\x65\x8B\x04\x00\x65\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x48\x89\xC0\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\x00\x00\x48\x8B\x00\x48\x8B\x04\x00\x48\x8B\x04\xC0\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x48\x8B\x04\x25\x60\x00\x00\x00\x65\x48\x8B\x00\x65\x48\x8B\x04\x00\x65\x48\x8B\x04\x40\x65\x48\x8B\x04\x80\x65\x48\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x89\x00\x89\x04\x00\x89\x04\xC0\x89\x04\xC5\xAD\xDE\x00\x00\x65\x89\x04\x25\x60\x00\x00\x00\x65\x89\x00\x65\x89\x04\x00\x65\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00\x48\x89\x00\x48\x89\x04\x00\x48\x89\x04\xC0\x48\x89\x04\xC5\xAD\xDE\x00\x00\x65\x48\x89\x04\x25\x60\x00\x00\x00\x65\x48\x89\x00\x65\x48\x89\x04\x00\x65\x48\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00";
+	//auto code = "\x8B\x04\xC8";
+	engine->SetRip((PVOID)code);
 	int counter = 0;
 	while (engine->step())
 	{
