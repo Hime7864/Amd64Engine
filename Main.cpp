@@ -163,7 +163,44 @@ bool AssemblyState::service_mov()
 	case 0x8A:
 		break;
 	case 0x8B:
-		break;
+	{
+		printf("MOV r16/32/64, r/m16/32/64\n");
+
+		auto modrm = (MODRM*)(opcode + 1);
+		printf("Prefix: W=%d, R=%d, X=%d, B=%d, CS=%d, SS=%d, DS=%d, ES=%d, FS=%d, GS=%d, LOCK=%d, OperandSize=%d, AddressSize=%d\n",
+			Prefix.W, Prefix.R, Prefix.X, Prefix.B, Prefix.CS, Prefix.SS, Prefix.DS, Prefix.ES, Prefix.FS, Prefix.GS, Prefix.LOCK, Prefix.OperandSize, Prefix.AddressSize);
+		printf("ModRM: Register: %d, RegisterMemory: %d, Mode: %d\n", modrm->Register, modrm->RegisterMemory, modrm->Mode);
+
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		{
+			printf("Memory operand with no displacement\n");
+		}break;
+		case EMODE::MEM_8_BIT_DISP:
+		{
+			printf("Memory operand with 8-bit displacement\n");
+		}break;
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			printf("Memory operand with 32-bit displacement\n");
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			if (Prefix.R)
+			{
+				GPR[modrm->Register] = GPR[modrm->RegisterMemory];
+			}
+			else
+			{
+				GPR[modrm->Register] = GPR[modrm->RegisterMemory] & 0xFFFFFFFFull;
+				RIP += 2;
+				status = true;
+			}
+		}break;
+		};
+
+	}break;
 	case 0x8C:
 		break;
 	case 0x8E:
@@ -181,23 +218,21 @@ bool AssemblyState::service_mov()
 	case 0xA5:
 		break;
 	case 0xB0:
-		break;
 	case 0xB1:
-		break;
 	case 0xB2:
-		break;
 	case 0xB3:
-		break;
 	case 0xB4:
-		break;
 	case 0xB5:
-		break;
 	case 0xB6:
-		break;
 	case 0xB7:
-		break;
 	case 0xB8:
-		break;
+	{
+		auto reg = *opcode & 0x7;
+		auto imm = *(UINT32*)(opcode + 1);
+		GPR[reg] = (UINT64)imm;
+		RIP += 5;
+		status = true;
+	}break;
 	case 0xB9:
 		break;
 	case 0xBA:
