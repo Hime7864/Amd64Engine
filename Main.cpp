@@ -24,10 +24,20 @@ enum struct EGPR : BYTE
 	RDX = 2,
 	RBX = 3,
 	RSP = 4,
-	RIP = 5
+	RBP = 5,
+	RSI = 6,
+	RDI = 7,
+	R8 = 8,
+	R9 = 9,
+	R10 = 10,
+	R11 = 11,
+	R12 = 12,
+	R13 = 13,
+	R14 = 14,
+	R15 = 15
 };
 
-enum struct EMOD : BYTE
+enum struct EMODE : BYTE
 {
 	MEM_0_BIT_DISP = 0,
 	MEM_8_BIT_DISP = 1,
@@ -35,11 +45,11 @@ enum struct EMOD : BYTE
 	REG_TO_REG = 3
 };
 
-struct MOD_RM
+struct MODRM
 {
-	BYTE Reg : 3;
-	BYTE R_M : 3;
-	EMOD Mod : 2;
+	BYTE Register : 3;
+	BYTE RegisterMemory : 3;
+	EMODE Mode : 2;
 };
 
 enum struct EPREFIXCODE : BYTE
@@ -55,28 +65,35 @@ enum struct EMNEMONICTYPE : BYTE
 	Immediate64
 };
 
-struct MNEMONIC_PREFIX
+struct MNEMONICPREFIX
 {
-	BYTE B : 1;
-	BYTE X : 1;
-	BYTE R : 1;
-	BYTE W : 1;
-	EPREFIXCODE code : 4;
+	INT16 B : 1;
+	INT16 X : 1;
+	INT16 R : 1;
+	INT16 W : 1;
+	INT16 CS : 1;
+	INT16 SS : 1;
+	INT16 DS : 1;
+	INT16 ES : 1;
+	INT16 FS : 1;
+	INT16 GS : 1;
+	INT16 LOCK : 1;
+	INT16 OperandSize : 1;
+	INT16 AddressSize : 1;
 };
+
+
+
 
 class AssemblyState
 {
 private:
 	UINT64 GPR[16];
-	EFLAGS Flags;
-	MNEMONIC_PREFIX MnemonicPrefix;
-	EMNEMONICTYPE MnemonicType;
-	bool service_push();
+	UINT64 RIP;
+	EFLAGS FLAGS;
+	MNEMONICPREFIX Prefix;
 	bool service_mov();
-	bool service_lea();
-	bool service_jmp();
-
-	bool service_mnemonic();
+	bool decode_mnemonic();
 public:
 	void SetRip(PVOID rip);
 	void SetGPR(int index, UINT64 value);
@@ -85,316 +102,255 @@ public:
 
 void AssemblyState::SetRip(PVOID rip)
 {
-	GPR[(int)EGPR::RIP] = (UINT64)rip;
+	RIP = (UINT64)rip;
+	return;
 }
 
 void AssemblyState::SetGPR(int index, UINT64 value)
 {
-	if (index < 16)
-		GPR[index] = value;
-}
-
-bool AssemblyState::service_push()
-{
-	bool status = false;
-	auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-	GPR[(int)EGPR::RIP]++;
-	if ((int)mod0.Mod == 1)
-	{
-		*(UINT64*)GPR[(int)EGPR::RSP] = GPR[mod0.Reg];
-		status = true;
-	}
-	else
-	{
-		if (mod0.R_M == 6)
-		{
-			if (mod0.Reg == (BYTE)EGPR::RSP)
-			{
-				auto mod1 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-				GPR[(int)EGPR::RIP]++;
-				if (mod1.Mod == (EMOD)0)
-				{
-					*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)GPR[mod1.Reg];
-					status = true;
-				}
-				else
-				{
-					if (mod1.Reg == (BYTE)EGPR::RIP)
-					{
-						*(UINT64*)GPR[(int)EGPR::RSP] = (GPR[mod1.R_M] * *(UINT64*)(1lu << (int)mod1.Mod) + *(UINT32*)(GPR[(int)EGPR::RIP]));
-						GPR[(int)EGPR::RIP] += 4;
-						status = true;
-					}
-					else
-					{
-						*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)(GPR[mod1.Reg] + GPR[mod1.R_M] * (1lu << (int)mod1.Mod));
-						status = true;
-					}
-				}
-			}
-			else
-			{
-				*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)GPR[mod0.Reg];
-				status = true;
-			}
-		}
-	}
-	GPR[(int)EGPR::RSP] -= 8;
-	return status;
+	GPR[index % 16] = value;
+	return;
 }
 
 bool AssemblyState::service_mov()
 {
 	bool status = false;
-	switch (MnemonicType)
+
+	auto opcode = (BYTE*)RIP;
+	switch (*opcode)
 	{
-	case EMNEMONICTYPE::Standard:
-	{
-		auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP]++;
-		switch (mod0.Mod)
-		{
-		case EMOD::MEM_0_BIT_DISP:
-		{
-			if (mod0.Reg == 4)
-			{
-				auto mod1 = *(MOD_RM*)(GPR[(int)EGPR::RIP]);
-				GPR[(int)EGPR::RIP]++;
-				if (mod1.Reg == (BYTE)EGPR::RIP)
-				{
-					GPR[mod0.R_M] = *(UINT64*)(GPR[mod1.R_M] * (1 << (int)mod1.Mod) + *(UINT32*)(GPR[(int)EGPR::RIP]));
-					GPR[(int)EGPR::RIP] += 4;
-					status = true;
-				}
-				else
-				{
-					GPR[mod0.R_M] = *(UINT64*)(GPR[mod1.Reg] + GPR[mod1.R_M] * (1lu << (int)mod1.Mod));
-					status = true;
-				}
-			}
-			else if (mod0.Reg == (BYTE)EGPR::RIP)
-			{
-				GPR[mod0.R_M] = *(UINT64*)(GPR[(int)EGPR::RIP] + *(UINT32*)(GPR[(int)EGPR::RIP]) + 4);
-				GPR[(int)EGPR::RIP] += 4;
-				status = true;
-			}
-			else
-			{
-				GPR[mod0.Reg] = *(UINT64*)GPR[mod0.R_M];
-				GPR[(int)EGPR::RIP] += 1;
-				status = true;
-			}
-		}break;
-		case EMOD::MEM_8_BIT_DISP:
-		{
-			GPR[(int)EGPR::RIP]++;
-			*(UINT64*)(GPR[mod0.Reg] + *(BYTE*)GPR[(int)EGPR::RIP]) = GPR[mod0.R_M];
-			GPR[(int)EGPR::RIP]++;
-			status = true;
-		}break;
-		case EMOD::MEM_32_BIT_DISP:
-		{
-			GPR[(int)EGPR::RIP]++;
-			*(UINT64*)(GPR[mod0.Reg] + *(UINT32*)GPR[(int)EGPR::RIP]) = GPR[mod0.R_M];
-			GPR[(int)EGPR::RIP] += 4;
-			status = true;
-		}break;
-		case EMOD::REG_TO_REG:
-		{
-			GPR[mod0.Reg] = GPR[mod0.R_M];
-			GPR[(int)EGPR::RIP]++;
-			status = true;
-		}break;
-		default:
-			break;
-		}
-	}break;
-	case EMNEMONICTYPE::Inverted:
-	{
-		auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP]++;
-		switch (mod0.Mod)
-		{
-		case EMOD::MEM_0_BIT_DISP:
-		{
-			if (mod0.Reg == 4)
-			{
-				auto mod1 = *(MOD_RM*)(GPR[(int)EGPR::RIP]);
-				GPR[(int)EGPR::RIP]++;
-				if (mod1.Reg == (BYTE)EGPR::RIP)
-				{
-					GPR[mod0.R_M] = *(UINT64*)(GPR[mod1.R_M] * (1 << (int)mod1.Mod) + *(UINT32*)(GPR[(int)EGPR::RIP]));
-					GPR[(int)EGPR::RIP] += 4;
-					status = true;
-				}
-				else
-				{
-					GPR[mod0.R_M] = *(UINT64*)(GPR[mod1.Reg] + GPR[mod1.R_M] * (1lu << (int)mod1.Mod));
-					status = true;
-				}
-			}
-			else if (mod0.Reg == (BYTE)EGPR::RIP)
-			{
-				GPR[mod0.R_M] = *(UINT64*)(GPR[(int)EGPR::RIP] + *(UINT32*)(GPR[(int)EGPR::RIP]) + 4);
-				GPR[(int)EGPR::RIP] += 4;
-				status = true;
-			}
-			else
-			{
-				GPR[mod0.R_M] = *(UINT64*)GPR[mod0.Reg];
-				GPR[(int)EGPR::RIP] += 1;
-				status = true;
-			}
-		}break;
-		case EMOD::MEM_8_BIT_DISP:
-		{
-			GPR[mod0.R_M] = *(UINT64*)(GPR[mod0.Reg] + *(BYTE*)GPR[(int)EGPR::RIP]);
-			GPR[(int)EGPR::RIP] += 1;
-			status = true;
-		}break;
-		case EMOD::MEM_32_BIT_DISP:
-		{
-			GPR[mod0.R_M] = *(UINT64*)(GPR[mod0.Reg] + *(UINT32*)GPR[(int)EGPR::RIP]);
-			GPR[(int)EGPR::RIP] += 4;
-			status = true;
-		}break;
-		case EMOD::REG_TO_REG:
-		{
-			GPR[mod0.R_M] = GPR[mod0.Reg];
-			GPR[(int)EGPR::RIP] += 1;
-			status = true;
-		}break;
-		default:
-			break;
-		}
-	}break;
-	case EMNEMONICTYPE::Immediate32:
-	{
-		auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP]++;
-		GPR[mod0.Reg] = *(UINT32*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP] += 4;
-		status = true;
-	}break;
-	case EMNEMONICTYPE::Immediate64:
-	{
-		auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP]++;
-		GPR[mod0.Reg] = *(UINT64*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP] += 8;
-		status = true;
-	}break;
-	default:
+	case 0x88:
 		break;
-	}
-	return status;
-}
-
-bool AssemblyState::service_lea()
-{
-	bool status = false;
-	switch (MnemonicType)
-	{
-	case EMNEMONICTYPE::Inverted:
-	{
-		auto mod0 = *(MOD_RM*)GPR[(int)EGPR::RIP];
-		GPR[(int)EGPR::RIP]++;
-		switch (mod0.Mod)
-		{
-		case EMOD::MEM_0_BIT_DISP:
-		{
-			if (mod0.Reg == 4)
-			{
-				auto mod1 = *(MOD_RM*)(GPR[(int)EGPR::RIP]);
-				GPR[(int)EGPR::RIP]++;
-				if (mod1.Reg == (BYTE)EGPR::RIP)
-				{
-					GPR[mod0.R_M] = GPR[mod1.R_M] * (1 << (int)mod1.Mod) + *(UINT32*)(GPR[(int)EGPR::RIP]);
-					GPR[(int)EGPR::RIP] += 4;
-					status = true;
-				}
-				else
-				{
-					GPR[mod0.R_M] = GPR[mod1.Reg] + GPR[mod1.R_M] * (1lu << (int)mod1.Mod);
-					status = true;
-				}
-			}
-			else if (mod0.Reg == (BYTE)EGPR::RIP)
-			{
-				GPR[mod0.R_M] = GPR[(int)EGPR::RIP] + *(UINT32*)(GPR[(int)EGPR::RIP]) + 4;
-				GPR[(int)EGPR::RIP] += 4;
-				status = true;
-			}
-			else
-			{
-				GPR[mod0.R_M] = GPR[mod0.Reg];
-				GPR[(int)EGPR::RIP] += 1;
-				status = true;
-			}
-		}break;
-		case EMOD::MEM_8_BIT_DISP:
-		{
-			GPR[mod0.R_M] = (GPR[mod0.Reg] + *(BYTE*)GPR[(int)EGPR::RIP]);
-			GPR[(int)EGPR::RIP] += 1;
-			status = true;
-		}break;
-		case EMOD::MEM_32_BIT_DISP:
-		{
-			GPR[mod0.R_M] = (GPR[mod0.Reg] + *(UINT32*)GPR[(int)EGPR::RIP]);
-			GPR[(int)EGPR::RIP] += 4;
-			status = true;
-		}break;
-		default:
-			break;
-		}
-	}break;
-	default:
-		break;
-	}
-	return status;
-}
-
-bool AssemblyState::service_jmp()
-{
-	GPR[(int)EGPR::RIP] = (INT64)GPR[(int)EGPR::RIP] + *(int*)GPR[(int)EGPR::RIP] + 4;
-	return true;
-}
-
-bool AssemblyState::service_mnemonic()
-{
-	bool status = false;
-	switch (*(BYTE*)GPR[(int)EGPR::RIP])
-	{
-	case 0x50:
-	case 0x51:
-	case 0x52:
-	case 0x53:
-	case 0x54:
-	case 0x55:
-	case 0x56:
-	case 0x57:
-	{
-		MnemonicType = EMNEMONICTYPE::Standard;
-		status = service_push();
-	}break;
 	case 0x89:
 	{
-		MnemonicType = EMNEMONICTYPE::Standard;
-		GPR[(int)EGPR::RIP]++;
-		status = service_mov();
+		printf("MOV r/m16/32/64, r16/32/64\n");
+
+		auto modrm = (MODRM*)(opcode + 1);
+		printf("Prefix: W=%d, R=%d, X=%d, B=%d, CS=%d, SS=%d, DS=%d, ES=%d, FS=%d, GS=%d, LOCK=%d, OperandSize=%d, AddressSize=%d\n",
+			Prefix.W, Prefix.R, Prefix.X, Prefix.B, Prefix.CS, Prefix.SS, Prefix.DS, Prefix.ES, Prefix.FS, Prefix.GS, Prefix.LOCK, Prefix.OperandSize, Prefix.AddressSize);
+		printf("ModRM: Register: %d, RegisterMemory: %d, Mode: %d\n", modrm->Register, modrm->RegisterMemory, modrm->Mode);
+
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		{
+			printf("Memory operand with no displacement\n");
+		}break;
+		case EMODE::MEM_8_BIT_DISP:
+		{
+			printf("Memory operand with 8-bit displacement\n");
+		}break;
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			printf("Memory operand with 32-bit displacement\n");
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			if (Prefix.R)
+			{
+				GPR[modrm->RegisterMemory] = GPR[modrm->Register];
+			}
+			else
+			{
+				GPR[modrm->RegisterMemory] = GPR[modrm->Register] & 0xFFFFFFFFull;
+				RIP += 2;
+				status = true;
+			}
+		}break;
+		};
+
 	}break;
+	case 0x8A:
+		break;
 	case 0x8B:
+		break;
+	case 0x8C:
+		break;
+	case 0x8E:
+		break;
+	case 0xA0:
+		break;
+	case 0xA1:
+		break;
+	case 0xA2:
+		break;
+	case 0xA3:
+		break;
+	case 0xA4:
+		break;
+	case 0xA5:
+		break;
+	case 0xB0:
+		break;
+	case 0xB1:
+		break;
+	case 0xB2:
+		break;
+	case 0xB3:
+		break;
+	case 0xB4:
+		break;
+	case 0xB5:
+		break;
+	case 0xB6:
+		break;
+	case 0xB7:
+		break;
+	case 0xB8:
+		break;
+	case 0xB9:
+		break;
+	case 0xBA:
+		break;
+	case 0xBB:
+		break;
+	case 0xBC:
+		break;
+	case 0xBD:
+		break;
+	case 0xBE:
+		break;
+	case 0xBF:
+		break;
+	case 0xC6:
+		break;
+	case 0xC7:
+		break;
+	};
+
+	return status;
+}
+
+bool AssemblyState::decode_mnemonic()
+{
+	bool status = false;
+
+	auto opcode = (BYTE*)RIP;
+
+	// first past for prefixes
+
+	Prefix = { 0 };
+
+	switch(*opcode)
 	{
-		MnemonicType = EMNEMONICTYPE::Inverted;
-		GPR[(int)EGPR::RIP]++;
-		status = service_mov();
-	}break;
-	case 0x8D:
+	case 0x26:
 	{
-		MnemonicType = EMNEMONICTYPE::Inverted;
-		GPR[(int)EGPR::RIP]++;
-		status = service_lea();
+		Prefix.ES = 1;
+		opcode++;
 	}break;
+	case 0x2E:
+	{
+		Prefix.CS = 1;
+		opcode++;
+	}break;
+	case 0x36:
+	{
+		Prefix.SS = 1;
+		opcode++;
+	}break;
+	case 0x3E:
+	{
+		Prefix.DS = 1;
+		opcode++;
+	}break;
+	case 0x40:
+	case 0x41:
+	case 0x42:
+	case 0x43:
+	case 0x44:
+	case 0x45:
+	case 0x46:
+	case 0x47:
+	case 0x48:
+	case 0x49:
+	case 0x4A:
+	case 0x4B:
+	case 0x4D:
+	case 0x4E:
+	case 0x4F:
+	{
+		Prefix.W = (*opcode >> 3) & 1;
+		Prefix.R = (*opcode >> 2) & 1;
+		Prefix.X = (*opcode >> 1) & 1;
+		Prefix.B = (*opcode >> 0) & 1;
+		opcode++;
+	}break;
+	case 0x64:
+	{
+		Prefix.FS = 1;
+		opcode++;
+	}break;
+	case 0x65:
+	{
+		Prefix.GS = 1;
+		opcode++;
+	}break;
+	case 0x66:
+	{
+		Prefix.OperandSize = 1;//32-16 bit
+		opcode++;
+	}break;
+	case 0x67:
+	{
+		Prefix.AddressSize = 1;//64-32 bit
+		opcode++;
+	}break;
+	case 0x9B:
+	{
+		printf("Prefix 9B, Aborting\n");
+		return false;
+	}break;
+	case 0xF0:
+	{
+		Prefix.LOCK = 1;
+		opcode++;
+	}break;
+	case 0xF2:
+	{
+		printf("Prefix F2, Aborting\n");
+		return false;
+	}break;
+	case 0xF3:
+	{
+		printf("Prefix F3, Aborting\n");
+		return false;
+	}break;
+	default:
+		break;
+	}
+
+	// second pass for 0F prefix
+	if(*opcode == 0x0F)
+	{
+		opcode++;
+		printf("Prefix 0F, Aborting\n");
+		return false;
+	}
+
+	printf("Decoding opcode: 0x%02X\n", *opcode);
+	// third pass for primary opcode
+	switch (*opcode)
+	{
+	case 0x88:
+	case 0x89:
+	case 0x8A:
+	case 0x8B:
+	case 0x8C:
+	case 0x8E:
+	case 0xA0:
+	case 0xA1:
+	case 0xA2:
+	case 0xA3:
+	case 0xA4:
+	case 0xA5:
+	case 0xB0:
+	case 0xB1:
+	case 0xB2:
+	case 0xB3:
+	case 0xB4:
+	case 0xB5:
+	case 0xB6:
+	case 0xB7:
 	case 0xB8:
 	case 0xB9:
 	case 0xBA:
@@ -403,53 +359,14 @@ bool AssemblyState::service_mnemonic()
 	case 0xBD:
 	case 0xBE:
 	case 0xBF:
-	{
-		MnemonicType = EMNEMONICTYPE::Immediate64;
-		status = service_mov();
-	}break;
+	case 0xC6:
 	case 0xC7:
 	{
-		MnemonicType = EMNEMONICTYPE::Immediate32;
-		GPR[(int)EGPR::RIP]++;
 		status = service_mov();
 	}break;
-	case 0xE9:
-	{
-		GPR[(int)EGPR::RIP]++;
-		status = service_jmp();
-	}break;
-	case 0xFF:
-	{
-		GPR[(int)EGPR::RIP]++;
-		switch (*(BYTE*)GPR[(int)EGPR::RIP])
-		{
-		case 0x30:
-		case 0x31:
-		case 0x32:
-		case 0x33:
-		case 0x34:
-		case 0x35:
-		case 0x36:
-		case 0x37:
-			status = service_push();
-			break;
-		case 0x70:
-		case 0x71:
-		case 0x72:
-		case 0x73:
-		case 0x74:
-		case 0x75:
-		case 0x76:
-		case 0x77:
-			status = service_push();
-			break;
-		default:
-			break;
-		}
-	}break;
-	default:
-		break;
 	}
+
+
 	return status;
 }
 
@@ -457,31 +374,8 @@ bool AssemblyState::step()
 {
 	bool status = false;
 
-	auto last_rip = GPR[(int)EGPR::RIP];
+	status = decode_mnemonic();
 
-	for (int i = 0; i < 15; i++)
-		printf("%02X ", ((BYTE*)GPR[(int)EGPR::RIP])[i]);
-	printf("\n");
-
-	MnemonicPrefix = *(MNEMONIC_PREFIX*)GPR[(int)EGPR::RIP];
-	if (MnemonicPrefix.code == EPREFIXCODE::REX)
-		GPR[(int)EGPR::RIP]++;
-	else
-		MnemonicPrefix = { 0 };
-
-	status = service_mnemonic();
-
-	if(!status)
-	{
-		printf("[FAILED] ");
-		for (int i = 0; i < 15; i++)
-			printf("%02X ", ((BYTE*)last_rip)[i]);
-		printf("\n");
-	}
-
-
-	auto byte_code = (BYTE*)GPR[(int)EGPR::RIP];
-	auto code = (byte_code[0] & 0xF0) >> 4;
 	return status;
 }
 
@@ -496,15 +390,15 @@ int main()
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0xA000);
 	engine->SetRip((PVOID)test);
-	//auto code = "\xFF\x34\xD8\xFF\x34\xDD\xAD\xDE\x00\x00";
-	//engine->SetRip((PVOID)code);
-	//engine->SetGPR((int)EGPR::RAX, (UINT64)malloc(0x1000));
-	//engine->SetGPR((int)EGPR::RBX, 1);
-
+	auto code = "\x89\xC0\xB8\xDE\x00\x00\x00\xB8\xAD\xDE\x00\x00\x8B\x00\x8B\x04\x00\x8B\x04\xC0\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x8B\x04\x25\x60\x00\x00\x00\x65\x8B\x00\x65\x8B\x04\x00\x65\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x48\x89\xC0\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\x00\x00\x48\x8B\x00\x48\x8B\x04\x00\x48\x8B\x04\xC0\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x48\x8B\x04\x25\x60\x00\x00\x00\x65\x48\x8B\x00\x65\x48\x8B\x04\x00\x65\x48\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x89\x00\x89\x04\x00\x89\x04\xC0\x89\x04\xC5\xAD\xDE\x00\x00\x65\x89\x04\x25\x60\x00\x00\x00\x65\x89\x00\x65\x89\x04\x00\x65\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00\x48\x89\x00\x48\x89\x04\x00\x48\x89\x04\xC0\x48\x89\x04\xC5\xAD\xDE\x00\x00\x65\x48\x89\x04\x25\x60\x00\x00\x00\x65\x48\x89\x00\x65\x48\x89\x04\x00\x65\x48\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00";
+    engine->SetRip((PVOID)code);
+	int counter = 0;
 	while (engine->step())
 	{
-
+		counter++;
 	}
+	printf("Executed %d instructions\n", counter);
 
 	return 0;
 }
+
