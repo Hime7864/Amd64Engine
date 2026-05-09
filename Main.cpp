@@ -125,8 +125,6 @@ bool AssemblyState::service_mov()
 		break;
 	case 0x89:
 	{
-		printf("MOV r/m16/32/64, r16/32/64\n");
-
 		auto modrm = (MODRM*)(opcode + 1);
 		printf("Prefix: W=%d, R=%d, X=%d, B=%d, CS=%d, SS=%d, DS=%d, ES=%d, FS=%d, GS=%d, LOCK=%d, OperandSize=%d, AddressSize=%d\n",
 			Prefix.W, Prefix.R, Prefix.X, Prefix.B, Prefix.CS, Prefix.SS, Prefix.DS, Prefix.ES, Prefix.FS, Prefix.GS, Prefix.LOCK, Prefix.OperandSize, Prefix.AddressSize);
@@ -136,7 +134,76 @@ bool AssemblyState::service_mov()
 		{
 		case EMODE::MEM_0_BIT_DISP:
 		{
-			printf("Memory operand with no displacement\n");
+			auto modrm = (MODRM*)(opcode + 1);
+			printf("modrm %02X %i %i %i\n", *(BYTE*)(opcode + 1), modrm->Register, modrm->RegisterMemory, modrm->Mode);
+			if (modrm->Register == (BYTE)EGPR::RSP)
+			{
+				auto modrm2 = (MODRM*)(opcode + 2);
+				printf("modrm2 %02X %i %i %i\n", *(BYTE*)(opcode + 2), modrm2->Register, modrm2->RegisterMemory, modrm2->Mode);
+				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+
+				if (modrm2->Register == (BYTE)EGPR::RBP)
+				{
+					auto imm = *(INT32*)(opcode + 3);
+					auto ptr = GPR[modrm2->RegisterMemory] * mutiplier + imm;
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+					if (Prefix.R)
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+						printf("MOV Reg, QWORD PTR [Imm+Reg*%i]\n", mutiplier);
+					}
+					else
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+						printf("MOV Reg, DWORD PTR [Imm+Reg*%i]\n", mutiplier);
+					}
+					RIP += 7;
+					status = true;
+				}
+				else
+				{
+					auto ptr = GPR[modrm2->Register] + GPR[modrm2->RegisterMemory] * mutiplier;
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+					if (Prefix.R)
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+						printf("MOV Reg, QWORD PTR [Reg+Reg*%i]\n", mutiplier);
+					}
+					else
+					{
+						//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+						printf("MOV Reg, DWORD PTR [Reg+Reg*%i]\n", mutiplier);
+					}
+					RIP += 3;
+					status = true;
+				}
+			}
+			else
+			{
+				auto ptr = GPR[modrm->Register];
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+				if (Prefix.R)
+				{
+					//GPR[modrm->RegisterMemory] = *(UINT64*)ptr;
+					printf("MOV Reg, QWORD PTR [Reg]\n");
+				}
+				else
+				{
+					//GPR[modrm->RegisterMemory] = *(UINT32*)ptr;
+					printf("MOV Reg, DWORD PTR [Reg]\n");
+				}
+				RIP += 2;
+				status = true;
+			}
 		}break;
 		case EMODE::MEM_8_BIT_DISP:
 		{
@@ -155,9 +222,9 @@ bool AssemblyState::service_mov()
 			else
 			{
 				GPR[modrm->RegisterMemory] = GPR[modrm->Register] & 0xFFFFFFFFull;
-				RIP += 2;
-				status = true;
 			}
+			RIP += 2;
+			status = true;
 		}break;
 		};
 
