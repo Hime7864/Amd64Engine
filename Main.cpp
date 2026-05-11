@@ -170,13 +170,11 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						//*(UINT64*)ptr = GPR[idx_regmem];
-						printf("MOV QWORD PTR [0x%X+r%i*%i], r%i\n", imm, idx_idx_regmem, mutiplier, idx_regmem);
+						*(UINT64*)ptr = GPR[idx_regmem];
 					}
 					else
 					{
-						//*(UINT32*)ptr = GPR[idx_regmem];
-						printf("MOV DWORD PTR [0x%X+r%i*%i], r%i\n", imm, idx_idx_regmem, mutiplier, idx_regmem);
+						*(UINT32*)ptr = GPR[idx_regmem];
 					}
 
 
@@ -205,13 +203,11 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						//*(UINT64*)ptr = GPR[idx_regmem];
-						printf("MOV QWORD PTR [r%i+r%i*%i], r%i\n", idx_reg, idx_idx_regmem, mutiplier, idx_regmem);
+						*(UINT64*)ptr = GPR[idx_regmem];
 					}
 					else
 					{
-						//*(UINT32*)ptr = GPR[idx_regmem];
-						printf("MOV DWORD PTR [r%i+r%i*%i], r%i\n", idx_reg, idx_idx_regmem, mutiplier, idx_regmem);
+						*(UINT32*)ptr = GPR[idx_regmem];
 					}
 					RIP += 3;
 					status = true;
@@ -235,13 +231,11 @@ bool AssemblyState::service_mov()
 
 				if (Prefix.W)
 				{
-					//*(UINT64*)ptr = GPR[idx_regmem];
-					printf("MOV QWORD PTR [R%i], R%i\n", idx_reg, idx_regmem);
+					*(UINT64*)ptr = GPR[idx_regmem];
 				}
 				else
 				{
-					//*(UINT32*)ptr = GPR[idx_regmem];
-					printf("MOV DWORD PTR [R%i], R%i\n", idx_reg, idx_regmem);
+					*(UINT32*)ptr = GPR[idx_regmem];
 				}
 				RIP += 2;
 				status = true;
@@ -304,13 +298,11 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						//GPR[idx_regmem] = *(UINT64*)ptr;
-						printf("MOV R%i, QWORD PTR [0x%X+r%i*%i]\n", idx_regmem, imm, idx_idx_regmem, mutiplier);
+						GPR[idx_regmem] = *(UINT64*)ptr;
 					}
 					else
 					{
-						//GPR[idx_regmem] = *(UINT32*)ptr;
-						printf("MOV R%i, DWORD PTR [0x%X+r%i*%i]\n", idx_regmem, imm, idx_idx_regmem, mutiplier);
+						GPR[idx_regmem] = *(UINT32*)ptr;
 					}
 
 					RIP += 7;
@@ -336,13 +328,11 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						//GPR[idx_regmem] = *(UINT64*)ptr;
-						printf("MOV R%i, QWORD PTR [r%i+r%i*%i]\n", idx_regmem, idx_reg, idx_idx_regmem, mutiplier);
+						GPR[idx_regmem] = *(UINT64*)ptr;
 					}
 					else
 					{
-						//GPR[idx_regmem] = *(UINT32*)ptr;
-						printf("MOV R%i, DWORD PTR [r%i+r%i*%i]\n", idx_regmem, idx_reg, idx_idx_regmem, mutiplier);
+						GPR[idx_regmem] = *(UINT32*)ptr;
 					}
 					RIP += 3;
 					status = true;
@@ -365,13 +355,11 @@ bool AssemblyState::service_mov()
 
 				if (Prefix.W)
 				{
-					//GPR[idx_regmem] = *(UINT64*)ptr;
-					printf("MOV R%i, QWORD PTR [R%i]\n", idx_regmem, idx_reg);
+					GPR[idx_regmem] = *(UINT64*)ptr;
 				}
 				else
 				{
-					//GPR[idx_regmem] = *(UINT32*)ptr;
-					printf("MOV R%i, DWORD PTR [R%i]\n", idx_regmem, idx_reg);
+					GPR[idx_regmem] = *(UINT32*)ptr;
 				}
 				RIP += 2;
 				status = true;
@@ -660,8 +648,8 @@ int main()
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0xA000);
 	engine->SetRip((PVOID)test);
 	//auto code = "\x89\xC0\xB8\xDE\x00\x00\x00\xB8\xAD\xDE\x00\x00\x8B\x00\x8B\x04\x00\x8B\x04\x40\x8B\x04\x80\x8B\x04\xC0\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x8B\x04\x25\x60\x00\x00\x00\x65\x8B\x00\x65\x8B\x04\x00\x65\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x48\x89\xC0\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\x00\x00\x48\x8B\x00\x48\x8B\x04\x00\x48\x8B\x04\xC0\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x48\x8B\x04\x25\x60\x00\x00\x00\x65\x48\x8B\x00\x65\x48\x8B\x04\x00\x65\x48\x8B\x04\x40\x65\x48\x8B\x04\x80\x65\x48\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x89\x00\x89\x04\x00\x89\x04\xC0\x89\x04\xC5\xAD\xDE\x00\x00\x65\x89\x04\x25\x60\x00\x00\x00\x65\x89\x00\x65\x89\x04\x00\x65\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00\x48\x89\x00\x48\x89\x04\x00\x48\x89\x04\xC0\x48\x89\x04\xC5\xAD\xDE\x00\x00\x65\x48\x89\x04\x25\x60\x00\x00\x00\x65\x48\x89\x00\x65\x48\x89\x04\x00\x65\x48\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00";
-	auto code = "\xB0\xDE\x41\xB0\xDE\xB8\xDE\x00\x00\x00\x66\x41\xB8\xDE\x00\x49\xC7\xC0\xDE\x00\x00\x00\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\xAD\xDE";
-	engine->SetRip((PVOID)code);
+	//auto code = "\xB0\xDE\x41\xB0\xDE\xB8\xDE\x00\x00\x00\x66\x41\xB8\xDE\x00\x49\xC7\xC0\xDE\x00\x00\x00\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\xAD\xDE";
+	//engine->SetRip((PVOID)code);
 	int counter = 0;
 	while (engine->step())
 	{
