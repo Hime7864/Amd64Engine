@@ -52,19 +52,6 @@ struct MODRM
 	EMODE Mode : 2;
 };
 
-enum struct EPREFIXCODE : BYTE
-{
-	REX = 4
-};
-
-enum struct EMNEMONICTYPE : BYTE
-{
-	Standard,
-	Inverted,
-	Immediate32,
-	Immediate64
-};
-
 struct MNEMONICPREFIX
 {
 	INT16 B : 1;
@@ -81,9 +68,6 @@ struct MNEMONICPREFIX
 	INT16 OperandSize : 1;
 	INT16 AddressSize : 1;
 };
-
-
-
 
 class AssemblyState
 {
@@ -117,7 +101,6 @@ void AssemblyState::SetGPR(int index, UINT64 value)
 bool AssemblyState::service_mov()
 {
 	bool status = false;
-	printf("Servicing MOV instruction %02X\n", *(BYTE*)RIP);
 	auto opcode = (BYTE*)RIP;
 	switch (*opcode)
 	{
