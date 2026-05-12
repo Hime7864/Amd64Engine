@@ -47,8 +47,8 @@ enum struct EMODE : BYTE
 
 struct MODRM
 {
-	BYTE Register : 3;
 	BYTE RegisterMemory : 3;
+	BYTE Register : 3;
 	EMODE Mode : 2;
 };
 
@@ -78,16 +78,48 @@ private:
 	UINT64 GsBase;
 	UINT64 FsBase;
 	MNEMONICPREFIX Prefix;
+
+	void log_Prefix();
+	void log_ModRM(MODRM* modrm);
+
 	bool service_mov();
 	bool service_jmp();
 	bool service_push();
 	bool service_pop();
+	bool service_sub();
 	bool decode_mnemonic();
 public:
 	void SetRip(PVOID rip);
 	void SetGPR(int index, UINT64 value);
 	bool step();
 };
+
+void AssemblyState::log_ModRM(MODRM* modrm)
+{
+	printf(" -> ModRM: [ mode: %d, regmem: %d, reg: %d ]\n", modrm->Mode, modrm->RegisterMemory, modrm->Register);
+}
+
+void AssemblyState::log_Prefix()
+{
+	printf(" -> Prefix: [ ");
+	if (Prefix.W)
+		printf("W, ");
+	if (Prefix.R)
+		printf("R, ");
+	if (Prefix.X)
+		printf("X, ");
+	if (Prefix.B)
+		printf("B, ");
+	if (Prefix.FS)
+		printf("FS, ");
+	if (Prefix.GS)
+		printf("GS, ");
+	if (Prefix.OperandSize)
+		printf("OperandSizeOverride, ");
+	if (Prefix.AddressSize)
+		printf("AddressSizeOverride, ");
+	printf("]\n");
+}
 
 void AssemblyState::SetRip(PVOID rip)
 {
@@ -104,51 +136,40 @@ void AssemblyState::SetGPR(int index, UINT64 value)
 bool AssemblyState::service_mov()
 {
 	bool status = false;
-	auto opcode = (BYTE*)RIP;
-	switch (*opcode)
+	switch (*RIP)
 	{
 	case 0x88:
 	{
-		auto modrm = (MODRM*)(opcode + 1);
-		auto idx_reg = modrm->Register;
-		auto idx_regmem = modrm->RegisterMemory;
-		if (Prefix.R)
-			idx_reg += 8;
-		if (Prefix.B)
-			idx_regmem += 8;
+		auto modrm = (MODRM*)(&RIP[1]);
+		auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+		auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-		*(BYTE*)&GPR[idx_regmem] = *(BYTE*)&GPR[idx_reg];
+		*(BYTE*)&GPR[modrm_register_memory] = *(BYTE*)&GPR[modrm_register];
 
 		RIP += 2;
 		status = true;
 	}break;
 	case 0x89:
 	{
-		auto modrm = (MODRM*)(opcode + 1);
+		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Mode)
 		{
 		case EMODE::MEM_0_BIT_DISP:
 		{
-			auto modrm = (MODRM*)(opcode + 1);
-			if (modrm->Register == (BYTE)EGPR::RSP)
+			if (modrm->RegisterMemory == (int)EGPR::RSP)
 			{
-				auto modrm2 = (MODRM*)(opcode + 2);
+				auto modrm2 = (MODRM*)(&RIP[2]);
+
 				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
 
-				if (modrm2->Register == (BYTE)EGPR::RBP)
+				if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
 				{
-					auto idx_reg = modrm2->Register;
-					auto idx_idx_regmem = modrm2->RegisterMemory;
-					auto idx_regmem = modrm->RegisterMemory;
-					if (Prefix.B)
-						idx_reg += 8;
-					if (Prefix.X)
-						idx_idx_regmem += 8;
-					if (Prefix.R)
-						idx_regmem += 8;
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = imm + GPR[modrm2_register] * mutiplier;
 
-					auto imm = *(INT32*)(opcode + 3);
-					auto ptr = imm + GPR[idx_idx_regmem] * mutiplier;
 					if (Prefix.GS)
 						ptr += GsBase;
 					else if (Prefix.FS)
@@ -156,44 +177,31 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						*(UINT64*)ptr = GPR[idx_regmem];
+						*(UINT64*)ptr = GPR[modrm_register];
 					}
 					else
 					{
-						*(UINT32*)ptr = GPR[idx_regmem];
+						*(UINT32*)ptr = *(UINT32*)&GPR[modrm_register];
 					}
-
-
 					RIP += 7;
 					status = true;
 				}
 				else
 				{
-					auto idx_reg = modrm2->Register;
-					auto idx_idx_regmem = modrm2->RegisterMemory;
-					auto idx_regmem = modrm->RegisterMemory;
-					if (Prefix.B)
-						idx_reg += 8;
-					if (Prefix.X)
-						idx_idx_regmem += 8;
-					if (Prefix.R)
-						idx_regmem += 8;
+					auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
 
-
-					auto ptr = GPR[idx_reg] + GPR[idx_idx_regmem] * mutiplier;
 					if (Prefix.GS)
 						ptr += GsBase;
 					else if (Prefix.FS)
 						ptr += FsBase;
 
-
 					if (Prefix.W)
 					{
-						*(UINT64*)ptr = GPR[idx_regmem];
+						*(UINT64*)ptr = GPR[modrm_register];
 					}
 					else
 					{
-						*(UINT32*)ptr = GPR[idx_regmem];
+						*(UINT32*)ptr = *(UINT32*)&GPR[modrm_register];
 					}
 					RIP += 3;
 					status = true;
@@ -201,15 +209,11 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-				auto idx_reg = modrm->Register;
-				auto idx_regmem = modrm->RegisterMemory;
-				if (Prefix.B)
-					idx_reg += 8;
-				if (Prefix.R)
-					idx_regmem += 8;
+				auto ptr = GPR[modrm_register_memory];
 
-				auto ptr = GPR[idx_reg];
 				if (Prefix.GS)
 					ptr += GsBase;
 				else if (Prefix.FS)
@@ -217,11 +221,11 @@ bool AssemblyState::service_mov()
 
 				if (Prefix.W)
 				{
-					*(UINT64*)ptr = GPR[idx_regmem];
+					*(UINT64*)ptr = GPR[modrm_register];
 				}
 				else
 				{
-					*(UINT32*)ptr = GPR[idx_regmem];
+					*(UINT32*)ptr = *(UINT32*)&GPR[modrm_register];
 				}
 				RIP += 2;
 				status = true;
@@ -229,20 +233,16 @@ bool AssemblyState::service_mov()
 		}break;
 		case EMODE::REG_TO_REG:
 		{
-			auto idx_reg = modrm->Register;
-			auto idx_regmem = modrm->RegisterMemory;
-			if(Prefix.R)
-				idx_reg += 8;
-			if (Prefix.B)
-				idx_regmem += 8;
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			if (Prefix.W)
 			{
-				GPR[idx_regmem] = GPR[idx_reg];
+				GPR[modrm_register_memory] = GPR[modrm_register];
 			}
 			else
 			{
-				GPR[idx_regmem] = GPR[idx_reg] & 0xFFFFFFFFull;
+				*(UINT32*)&GPR[modrm_register_memory] = *(UINT32*)&GPR[modrm_register];
 			}
 			RIP += 2;
 			status = true;
@@ -252,31 +252,25 @@ bool AssemblyState::service_mov()
 	}break;
 	case 0x8B:
 	{
-		auto modrm = (MODRM*)(opcode + 1);
+		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Mode)
 		{
 		case EMODE::MEM_0_BIT_DISP:
 		{
-			auto modrm = (MODRM*)(opcode + 1);
-			if (modrm->Register == (BYTE)EGPR::RSP)
+			if (modrm->RegisterMemory == (int)EGPR::RSP)
 			{
-				auto modrm2 = (MODRM*)(opcode + 2);
+				auto modrm2 = (MODRM*)(&RIP[2]);
+
 				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
 
-				if (modrm2->Register == (BYTE)EGPR::RBP)
+				if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
 				{
-					auto idx_reg = modrm2->Register;
-					auto idx_idx_regmem = modrm2->RegisterMemory;
-					auto idx_regmem = modrm->RegisterMemory;
-					if (Prefix.B)
-						idx_reg += 8;
-					if (Prefix.X)
-						idx_idx_regmem += 8;
-					if (Prefix.R)
-						idx_regmem += 8;
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = imm + GPR[modrm2_register] * mutiplier;
 
-					auto imm = *(INT32*)(opcode + 3);
-					auto ptr = imm + GPR[idx_idx_regmem] * mutiplier;
 					if (Prefix.GS)
 						ptr += GsBase;
 					else if (Prefix.FS)
@@ -284,29 +278,19 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						GPR[idx_regmem] = *(UINT64*)ptr;
+						GPR[modrm_register] = *(UINT64*)ptr;
 					}
 					else
 					{
-						GPR[idx_regmem] = *(UINT32*)ptr;
+						*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
 					}
-
 					RIP += 7;
 					status = true;
 				}
 				else
 				{
-					auto idx_reg = modrm2->Register;
-					auto idx_idx_regmem = modrm2->RegisterMemory;
-					auto idx_regmem = modrm->RegisterMemory;
-					if (Prefix.B)
-						idx_reg += 8;
-					if (Prefix.X)
-						idx_idx_regmem += 8;
-					if (Prefix.R)
-						idx_regmem += 8;
+					auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
 
-					auto ptr = GPR[idx_reg] + GPR[idx_idx_regmem] * mutiplier;
 					if (Prefix.GS)
 						ptr += GsBase;
 					else if (Prefix.FS)
@@ -314,11 +298,11 @@ bool AssemblyState::service_mov()
 
 					if (Prefix.W)
 					{
-						GPR[idx_regmem] = *(UINT64*)ptr;
+						GPR[modrm_register] = *(UINT64*)ptr;
 					}
 					else
 					{
-						GPR[idx_regmem] = *(UINT32*)ptr;
+						*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
 					}
 					RIP += 3;
 					status = true;
@@ -326,14 +310,11 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
-				auto idx_reg = modrm->Register;
-				auto idx_regmem = modrm->RegisterMemory;
-				if (Prefix.B)
-					idx_reg += 8;
-				if (Prefix.R)
-					idx_regmem += 8;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-				auto ptr = GPR[idx_reg];
+				auto ptr = GPR[modrm_register_memory];
+
 				if (Prefix.GS)
 					ptr += GsBase;
 				else if (Prefix.FS)
@@ -341,11 +322,11 @@ bool AssemblyState::service_mov()
 
 				if (Prefix.W)
 				{
-					GPR[idx_regmem] = *(UINT64*)ptr;
+					GPR[modrm_register] = *(UINT64*)ptr;
 				}
 				else
 				{
-					GPR[idx_regmem] = *(UINT32*)ptr;
+					*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
 				}
 				RIP += 2;
 				status = true;
@@ -355,26 +336,26 @@ bool AssemblyState::service_mov()
 	}break;
 	case 0x8C:
 	{
-		auto modrm = (MODRM*)(opcode + 1);
-		switch (modrm->RegisterMemory)
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
 		{
 		case 0:
-			GPR[modrm->Register] = 0x2B;
+			GPR[modrm->RegisterMemory] = 0x2B;
 			break;
 		case 1:
-			GPR[modrm->Register] = 0x33;
+			GPR[modrm->RegisterMemory] = 0x33;
 			break;
 		case 2:
-			GPR[modrm->Register] = 0x2B;
+			GPR[modrm->RegisterMemory] = 0x2B;
 			break;
 		case 3:
-			GPR[modrm->Register] = 0x2B;
+			GPR[modrm->RegisterMemory] = 0x2B;
 			break;
 		case 4:
-			GPR[modrm->Register] = 0x53;
+			GPR[modrm->RegisterMemory] = 0x53;
 			break;
 		case 5:
-			GPR[modrm->Register] = 0x2B;
+			GPR[modrm->RegisterMemory] = 0x2B;
 			break;
 		}
 		RIP += 2;
@@ -400,10 +381,10 @@ bool AssemblyState::service_mov()
 	case 0xB6:
 	case 0xB7:
 	{
-		auto reg = *opcode & 0x7;
+		auto reg = *RIP & 0x7;
 		if(Prefix.B)
 			reg += 8;
-		*(BYTE*)&GPR[reg] = *(BYTE*)(opcode + 1);
+		*(BYTE*)&GPR[reg] = RIP[1];
 		RIP += 2;
 		status = true;
 	}break;
@@ -416,13 +397,13 @@ bool AssemblyState::service_mov()
 	case 0xBE:
 	case 0xBF:
 	{
-		auto reg = *opcode & 0x7;
+		auto reg = *RIP & 0x7;
 		if (Prefix.B)
 			reg += 8;
 
 		if (Prefix.OperandSize)
 		{
-			*(WORD*)&GPR[reg] = *(WORD*)(opcode + 1);
+			*(WORD*)&GPR[reg] = *(WORD*)(&RIP[1]);
 			RIP += 3;
 			status = true;
 		}
@@ -430,33 +411,59 @@ bool AssemblyState::service_mov()
 		{
 			if (Prefix.W)
 			{
-				GPR[reg] = *(UINT64*)(opcode + 1);
+				GPR[reg] = *(UINT64*)(&RIP[1]);
 				RIP += 9;
 				status = true;
 			}
 			else
 			{
-				GPR[reg] = *(UINT32*)(opcode + 1);
+				GPR[reg] = *(UINT32*)(&RIP[1]);
 				RIP += 5;
 				status = true;
 			}
 		}
 	}break;
+	case 0xC6:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		auto imm = *(UINT8*)(&RIP[2]);
+		auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+		*(BYTE*)&GPR[modrm_register_memory] = imm;
+
+		RIP += 3;
+		status = true;
+	}break;
 	case 0xC7:
 	{
-		auto modrm = (MODRM*)(opcode + 1);
-		auto imm = *(UINT32*)(opcode + 2);
-		auto reg = modrm->Register;
-		if (Prefix.B)
-			reg += 8;
+		auto modrm = (MODRM*)(&RIP[1]);
+		auto imm = *(UINT32*)(&RIP[2]);
+		auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-		GPR[reg] = (UINT64)imm;
+		if (Prefix.W)
+		{
+			GPR[modrm_register_memory] = imm;
+		}
+		else
+		{
+			if (Prefix.OperandSize)
+			{
+				*(UINT16*)&GPR[modrm_register_memory] = (UINT16)imm;
+			}
+			else
+			{
+				*(UINT32*)&GPR[modrm_register_memory] = imm;
+			}
+		}
 		
 		RIP += 6;
 		status = true;
 
 	}break;
 	};
+
+	if (status)
+		printf("MOVE\n");
 
 	return status;
 }
@@ -480,6 +487,10 @@ bool AssemblyState::service_jmp()
 		status = true;
 	}break;
 	};
+
+	if (status)
+		printf("JUMP\n");
+
 	return status;
 }
 
@@ -500,39 +511,552 @@ bool AssemblyState::service_push()
 		auto reg = *RIP & 0x7;
 		if (Prefix.B)
 			reg += 8;
-		printf("Pushing register: %d\n", reg);
+		
+		*(UINT64*)GPR[(int)EGPR::RSP] = GPR[reg];
+		RIP += 1;
+		GPR[(int)EGPR::RSP] -= 8;
+		status = true;
 	}break;
 	case 0xFF:
 	{
+		log_Prefix();
 		auto modrm = (MODRM*)(&RIP[1]);
+		log_ModRM(modrm);
 		switch (modrm->Register)
 		{
 		case 6:
 		{
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			{
+				if (modrm->RegisterMemory == (int)EGPR::RSP)
+				{
+					auto modrm2 = (MODRM*)(&RIP[2]);
+					auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+					log_ModRM(modrm2);
+
+					if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
+					{
+						
+						auto idx_idx_regmem = modrm2->Register;
+						if (Prefix.X)
+							idx_idx_regmem += 8;
+						auto imm = *(INT32*)(&RIP[3]);
+						auto ptr = imm + GPR[idx_idx_regmem] * mutiplier;
+						if (Prefix.GS)
+							ptr += GsBase;
+						else if (Prefix.FS)
+							ptr += FsBase;
+						if (Prefix.OperandSize)
+						{
+							*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+							GPR[(int)EGPR::RSP] -= 8;
+							RIP += 7;
+							status = true;
+						}
+						else
+						{
+							*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+							GPR[(int)EGPR::RSP] -= 2;
+							RIP += 7;
+							status = true;
+						}
+					}
+					else
+					{
+						auto idx_reg = modrm2->RegisterMemory;
+						if (Prefix.B)
+							idx_reg += 8;
+						auto idx_idx_regmem = modrm2->Register;
+						if (Prefix.X)
+							idx_idx_regmem += 8;
+						auto ptr = GPR[idx_reg] + GPR[idx_idx_regmem] * mutiplier;
+						if (Prefix.GS)
+							ptr += GsBase;
+						else if (Prefix.FS)
+							ptr += FsBase;
+						if (Prefix.OperandSize)
+						{
+							*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+							GPR[(int)EGPR::RSP] -= 8;
+							RIP += 3;
+							status = true;
+						}
+						else
+						{
+							*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+							GPR[(int)EGPR::RSP] -= 2;
+							RIP += 3;
+							status = true;
+						}
+					}
+				}
+				else
+				{
+					//push [rax]
+
+					auto ptr = GPR[modrm->RegisterMemory];
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+					if (Prefix.OperandSize)
+					{
+						*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+						GPR[(int)EGPR::RSP] -= 8;
+						RIP += 2;
+						status = true;
+					}
+					else
+					{
+						*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+						GPR[(int)EGPR::RSP] -= 2;
+						RIP += 2;
+						status = true;
+					}
+
+				}
+			}break;
+			case EMODE::MEM_8_BIT_DISP:
+			{
+				auto idx_reg = modrm->RegisterMemory;
+				if (Prefix.B)
+					idx_reg += 8;
+				auto imm = *(INT8*)(&RIP[2]);
+				auto ptr = (INT64)GPR[idx_reg] + (INT64)imm;
+				if(Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+
+				if(Prefix.OperandSize)
+				{
+					*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+					GPR[(int)EGPR::RSP] -= 8;
+					RIP += 2;
+					status = true;
+				}
+				else
+				{
+					*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+					GPR[(int)EGPR::RSP] -= 2;
+					RIP += 2;
+					status = true;
+				}
+			}break;
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto idx_reg = modrm->RegisterMemory;
+				if (Prefix.B)
+					idx_reg += 8;
+				auto imm = *(INT32*)(&RIP[2]);
+				auto ptr = (INT64)GPR[idx_reg] + (INT64)imm;
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+
+				if (Prefix.OperandSize)
+				{
+					*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+					GPR[(int)EGPR::RSP] -= 8;
+					RIP += 6;
+					status = true;
+				}
+				else
+				{
+					*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+					GPR[(int)EGPR::RSP] -= 2;
+					RIP += 6;
+					status = true;
+				}
+			}break;
 			
+			};
 		}break;
 		}
 	}break;
 	default:
 		break;
 	}
+
+	if (status)
+		printf("PUSH\n");
+
 	return status;
 }
 
-bool AssemblyState::service_pop()
+bool AssemblyState::service_sub()
 {
 	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0x28:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::REG_TO_REG:
+		{
+			auto idx_reg = modrm->RegisterMemory;
+			auto idx_regmem = modrm->Register;
+			if (Prefix.R)
+				idx_reg += 8;
+			if (Prefix.B)
+				idx_regmem += 8;
+			*(BYTE*)&GPR[idx_reg] -= *(BYTE*)&GPR[idx_regmem];
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x29:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		{
+			if (modrm->RegisterMemory == (int)EGPR::RSP)
+			{
+				auto modrm2 = (MODRM*)(&RIP[2]);
+
+				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
+
+				if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
+				{
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = imm + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					if (Prefix.W)
+					{
+						*(UINT64*)ptr -= GPR[modrm_register];
+					}
+					else
+					{
+						*(UINT32*)ptr -= *(UINT32*)&GPR[modrm_register];
+					}
+					RIP += 7;
+					status = true;
+				}
+				else
+				{
+					auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					if (Prefix.W)
+					{
+						*(UINT64*)ptr -= GPR[modrm_register];
+					}
+					else
+					{
+						*(UINT32*)ptr -= *(UINT32*)&GPR[modrm_register];
+					}
+					RIP += 3;
+					status = true;
+				}
+			}
+			else
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto ptr = GPR[modrm_register_memory];
+
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+
+				if (Prefix.W)
+				{
+					*(UINT64*)ptr -= GPR[modrm_register];
+				}
+				else
+				{
+					*(UINT32*)ptr -= *(UINT32*)&GPR[modrm_register];
+				}
+				RIP += 2;
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				GPR[modrm_register] -= GPR[modrm_register_memory];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					*(UINT16*)&GPR[modrm_register] -= *(UINT16*)&GPR[modrm_register_memory];
+				}
+				else
+				{
+					*(UINT32*)&GPR[modrm_register] -= *(UINT32*)&GPR[modrm_register_memory];
+				}
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x2A:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		log_ModRM(modrm);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		{
+			if (modrm->RegisterMemory == (int)EGPR::RSP)
+			{
+				auto modrm2 = (MODRM*)(&RIP[2]);
+
+				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
+
+				if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
+				{
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = imm + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					*(BYTE*)&GPR[modrm_register] -= *(BYTE*)ptr;
+
+					RIP += 7;
+					status = true;
+				}
+				else
+				{
+					auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					*(BYTE*)&GPR[modrm_register] -= *(BYTE*)ptr;
+
+					RIP += 3;
+					status = true;
+				}
+			}
+			else
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto ptr = GPR[modrm_register_memory];
+
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+
+				*(BYTE*)&GPR[modrm_register] -= *(BYTE*)ptr;
+
+				RIP += 2;
+				status = true;
+			}
+		}break;
+		};
+	}break;
+	case 0x2B:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		{
+			if (modrm->RegisterMemory == (int)EGPR::RSP)
+			{
+				auto modrm2 = (MODRM*)(&RIP[2]);
+
+				auto mutiplier = 1ull << (BYTE)modrm2->Mode;
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
+
+				if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
+				{
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = imm + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					if (Prefix.W)
+					{
+						GPR[modrm_register] -= *(UINT64*)ptr;
+					}
+					else
+					{
+						*(UINT32*)&GPR[modrm_register] -= *(UINT32*)ptr;
+					}
+					RIP += 7;
+					status = true;
+				}
+				else
+				{
+					auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					if (Prefix.W)
+					{
+						GPR[modrm_register] -= *(UINT64*)ptr;
+					}
+					else
+					{
+						*(UINT32*)&GPR[modrm_register] -= *(UINT32*)ptr;
+					}
+					RIP += 3;
+					status = true;
+				}
+			}
+			else
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto ptr = GPR[modrm_register_memory];
+
+				if (Prefix.GS)
+					ptr += GsBase;
+				else if (Prefix.FS)
+					ptr += FsBase;
+
+				if (Prefix.W)
+				{
+					GPR[modrm_register] -= *(UINT64*)ptr;
+				}
+				else
+				{
+					*(UINT32*)&GPR[modrm_register] -= *(UINT32*)ptr;
+				}
+				RIP += 2;
+				status = true;
+			}
+		}break;
+		};
+	}break;
+	case 0x2C:
+	{
+		auto imm = *(UINT8*)(&RIP[1]);
+		*(UINT8*)&GPR[(int)EGPR::RAX] -= imm;
+		RIP += 2;
+		status = true;
+	}break;
+	case 0x2D:
+	{
+		auto imm = *(UINT32*)(&RIP[1]);
+		if (Prefix.OperandSize)
+		{
+			*(UINT16*)&GPR[(int)EGPR::RAX] -= imm & 0xFFFF;
+			RIP += 5;
+			status = true;
+		}
+		else
+		{
+			*(UINT32*)&GPR[(int)EGPR::RAX] -= imm;
+			RIP += 5;
+			status = true;
+		}
+	}break;
+	case 0x80:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 5:
+		{
+			auto imm = *(UINT8*)(&RIP[2]);
+			auto idx_reg = modrm->RegisterMemory;
+			if (Prefix.B)
+				idx_reg += 8;
+			*(UINT8*)&GPR[idx_reg] -= imm;
+			RIP += 3;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x81:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 5:
+		{
+			auto imm = *(UINT32*)(&RIP[2]);
+			auto idx_reg = modrm->RegisterMemory;
+			if (Prefix.B)
+				idx_reg += 8;
+			GPR[idx_reg] -= imm;
+			RIP += 6;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x83:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 5:
+		{
+			auto imm = *(UINT8*)(&RIP[2]);
+			auto idx_reg = modrm->RegisterMemory;
+			if (Prefix.B)
+				idx_reg += 8;
+			GPR[idx_reg] -= imm;
+			RIP += 3;
+			status = true;
+		}break;
+		};
+	}break;
+	};
+
+	if (status)
+		printf("SUB\n");
+
 	return status;
 }
 
 bool AssemblyState::decode_mnemonic()
 {
 	bool status = false;
-
-	// first past for prefixes
-
 	Prefix = { 0 };
-
+	// segment override prefixes
 	switch (*RIP)
 	{
 	case 0x26:
@@ -565,6 +1089,11 @@ bool AssemblyState::decode_mnemonic()
 		Prefix.GS = 1;
 		RIP++;
 	}break;
+	};
+
+	// operand and address size override prefixes
+	switch (*RIP)
+	{
 	case 0x66:
 	{
 		Prefix.OperandSize = 1;//32-16 bit
@@ -576,6 +1105,8 @@ bool AssemblyState::decode_mnemonic()
 		RIP++;
 	}break;
 	};
+
+	// REX prefix
 	switch (*RIP)
 	{
 	case 0x40:
@@ -634,10 +1165,23 @@ bool AssemblyState::decode_mnemonic()
 		return false;
 	}
 
-	printf("Decoding opcode: 0x%02X\n", *RIP);
+	printf("Decoding [ ");
+	for(int i=0;i<10;i++)
+		printf("%02X ", RIP[i]);
+	printf("]\n");
 	// third pass for primary opcode
 	switch (*RIP)
 	{
+	case 0x28:
+	case 0x29:
+	case 0x2A:
+	case 0x2B:
+	case 0x2C:
+	case 0x2D:
+	{
+		status = service_sub();
+	}break;
+
 	case 0x50:
 	case 0x51:
 	case 0x52:
@@ -649,16 +1193,27 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_push();
 	}break;
-	case 0x58:
-	case 0x59:
-	case 0x5A:
-	case 0x5B:
-	case 0x5C:
-	case 0x5D:
-	case 0x5E:
-	case 0x5F:
+	case 0x80:
 	{
-		status = service_pop();
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 5:
+		{
+			status = service_sub();
+		}break;
+		}
+	}break;
+	case 0x81:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 5:
+		{
+			status = service_sub();
+		}break;
+		}
 	}break;
 	case 0x88:
 	case 0x89:
@@ -701,7 +1256,6 @@ bool AssemblyState::decode_mnemonic()
 	case 0xFF:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		printf("%i %i %i\n", modrm->Mode, modrm->Register, modrm->RegisterMemory);
 		switch (modrm->Register)
 		{
 		case 6:
@@ -736,8 +1290,8 @@ int main()
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0xA000);
 	engine->SetRip((PVOID)test);
-	auto code = "\x41\xFF\x31";
-	engine->SetRip((PVOID)code);
+	//auto code = "\x41\x29\x00\x48\x29\x04\xC0\x48\x29\x04\xC5\x00\x10\x00\x00\x48\x29\xC0";
+	//engine->SetRip((PVOID)code);
 	int counter = 0;
 	while (engine->step())
 	{
