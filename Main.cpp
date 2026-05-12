@@ -79,6 +79,9 @@ private:
 	UINT64 FsBase;
 	MNEMONICPREFIX Prefix;
 	bool service_mov();
+	bool service_jmp();
+	bool service_push();
+	bool service_pop();
 	bool decode_mnemonic();
 public:
 	void SetRip(PVOID rip);
@@ -458,6 +461,70 @@ bool AssemblyState::service_mov()
 	return status;
 }
 
+bool AssemblyState::service_jmp()
+{
+	bool status = false;
+	auto opcode = (BYTE*)RIP;
+	switch (*opcode)
+	{
+	case 0xE9:
+	{
+		auto imm = *(INT32*)(opcode + 1);
+		RIP += imm + 5;
+		status = true;
+	}break;
+	case 0xEB:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		RIP += imm + 2;
+		status = true;
+	}break;
+	};
+	return status;
+}
+
+bool AssemblyState::service_push()
+{
+	bool status = false;
+	switch (*RIP)
+	{
+	case 0x50:
+	case 0x51:
+	case 0x52:
+	case 0x53:
+	case 0x54:
+	case 0x55:
+	case 0x56:
+	case 0x57:
+	{
+		auto reg = *RIP & 0x7;
+		if (Prefix.B)
+			reg += 8;
+		printf("Pushing register: %d\n", reg);
+	}break;
+	case 0xFF:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 6:
+		{
+			
+		}break;
+		}
+	}break;
+	default:
+		break;
+	}
+	return status;
+}
+
+bool AssemblyState::service_pop()
+{
+	bool status = false;
+	return status;
+}
+
 bool AssemblyState::decode_mnemonic()
 {
 	bool status = false;
@@ -571,6 +638,28 @@ bool AssemblyState::decode_mnemonic()
 	// third pass for primary opcode
 	switch (*RIP)
 	{
+	case 0x50:
+	case 0x51:
+	case 0x52:
+	case 0x53:
+	case 0x54:
+	case 0x55:
+	case 0x56:
+	case 0x57:
+	{
+		status = service_push();
+	}break;
+	case 0x58:
+	case 0x59:
+	case 0x5A:
+	case 0x5B:
+	case 0x5C:
+	case 0x5D:
+	case 0x5E:
+	case 0x5F:
+	{
+		status = service_pop();
+	}break;
 	case 0x88:
 	case 0x89:
 	case 0x8A:
@@ -604,6 +693,23 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_mov();
 	}break;
+	case 0xE9:
+	case 0xEB:
+	{
+		status = service_jmp();
+	}break;
+	case 0xFF:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		printf("%i %i %i\n", modrm->Mode, modrm->Register, modrm->RegisterMemory);
+		switch (modrm->Register)
+		{
+		case 6:
+		{
+			status = service_push();
+		}break;
+		}
+	}break;
 	}
 
 
@@ -630,9 +736,8 @@ int main()
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0xA000);
 	engine->SetRip((PVOID)test);
-	//auto code = "\x89\xC0\xB8\xDE\x00\x00\x00\xB8\xAD\xDE\x00\x00\x8B\x00\x8B\x04\x00\x8B\x04\x40\x8B\x04\x80\x8B\x04\xC0\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x8B\x04\x25\x60\x00\x00\x00\x65\x8B\x00\x65\x8B\x04\x00\x65\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x48\x89\xC0\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\x00\x00\x48\x8B\x00\x48\x8B\x04\x00\x48\x8B\x04\xC0\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x65\x48\x8B\x04\x25\x60\x00\x00\x00\x65\x48\x8B\x00\x65\x48\x8B\x04\x00\x65\x48\x8B\x04\x40\x65\x48\x8B\x04\x80\x65\x48\x8B\x04\xC0\x65\x48\x8B\x04\xC5\xAD\xDE\x00\x00\x89\x00\x89\x04\x00\x89\x04\xC0\x89\x04\xC5\xAD\xDE\x00\x00\x65\x89\x04\x25\x60\x00\x00\x00\x65\x89\x00\x65\x89\x04\x00\x65\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00\x48\x89\x00\x48\x89\x04\x00\x48\x89\x04\xC0\x48\x89\x04\xC5\xAD\xDE\x00\x00\x65\x48\x89\x04\x25\x60\x00\x00\x00\x65\x48\x89\x00\x65\x48\x89\x04\x00\x65\x48\x89\x04\xC0\x65\x48\x89\x04\xC5\xAD\xDE\x00\x00";
-	//auto code = "\xB0\xDE\x41\xB0\xDE\xB8\xDE\x00\x00\x00\x66\x41\xB8\xDE\x00\x49\xC7\xC0\xDE\x00\x00\x00\x48\xC7\xC0\xDE\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\x00\x00\x00\x00\x48\xB8\xAD\xDE\xAD\xDE\xAD\xDE\xAD\xDE";
-	//engine->SetRip((PVOID)code);
+	auto code = "\x41\xFF\x31";
+	engine->SetRip((PVOID)code);
 	int counter = 0;
 	while (engine->step())
 	{
