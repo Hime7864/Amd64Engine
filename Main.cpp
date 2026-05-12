@@ -1104,14 +1104,14 @@ bool AssemblyState::decode_mnemonic()
 				size = Advancement - (UINT64)start_rip;
 			else if(size > 10)
 				size = 10;
-			printf("Decoded [ ");
+			printf(" > Decoded [ ");
 			for (UINT64 i = 0; i < size; i++)
 				printf("%02X ", start_rip[i]);
 			printf("]\n");
 		}
 		else
 		{
-			printf("Failed [ ");
+			printf("\nFailed [ ");
 			for (int i = 0; i < 10; i++)
 				printf("%02X ", start_rip[i]);
 			printf("]\n");
@@ -1119,7 +1119,7 @@ bool AssemblyState::decode_mnemonic()
 	}
 	else
 	{
-		printf("Failed [ ");
+		printf("\nFailed [ ");
 		for (int i = 0; i < 10; i++)
 			printf("%02X ", start_rip[i]);
 		printf("]\n");
