@@ -67,6 +67,7 @@ struct MNEMONICPREFIX
 	INT16 LOCK : 1;
 	INT16 OperandSize : 1;
 	INT16 AddressSize : 1;
+	INT16 Repeated : 1;
 };
 
 class AssemblyState
@@ -98,6 +99,8 @@ private:
 	bool service_add();
 
 	bool service_test();
+
+	bool service_stosd();
 
 	bool decode_mnemonic();
 public:
@@ -464,7 +467,14 @@ bool AssemblyState::service_mov()
 				}
 				else
 				{
-					*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+					if (Prefix.OperandSize)
+					{
+						*(UINT16*)&GPR[modrm_register] = *(UINT16*)ptr;
+					}
+					else
+					{
+						*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+					}
 				}
 				status = true;
 			}
@@ -487,7 +497,14 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
-				*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+				if (Prefix.OperandSize)
+				{
+					*(UINT16*)&GPR[modrm_register] = *(UINT16*)ptr;
+				}
+				else
+				{
+					*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+				}
 			}
 
 			RIP += 4;
@@ -511,10 +528,39 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
-				*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+				if (Prefix.OperandSize)
+				{
+					*(UINT16*)&GPR[modrm_register] = *(UINT16*)ptr;
+				}
+				else
+				{
+					*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+				}
 			}
 
 			RIP += 8;
+			status = true;
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+			if (Prefix.W)
+			{
+				GPR[modrm_register] = GPR[modrm_register_memory];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					*(UINT16*)&GPR[modrm_register] = *(UINT16*)&GPR[modrm_register_memory];
+				}
+				else
+				{
+					*(UINT32*)&GPR[modrm_register] = *(UINT32*)&GPR[modrm_register_memory];
+				}
+			}
+			RIP += 2;
 			status = true;
 		}break;
 		};
@@ -799,12 +845,43 @@ bool AssemblyState::service_call()
 {
 	auto status = false;
 
-	auto imm = *(INT32*)&RIP[1];
-	GPR[(int)EGPR::RSP] -= 8;
-	*(UINT64*)GPR[(int)EGPR::RSP] = (UINT64)(RIP + 5);
-	Advancement = (UINT64)RIP + 5;
-	RIP += imm + 5;
-	status = true;
+
+	switch (*RIP)
+	{
+	case 0xE8:
+	{
+		auto imm = *(INT32*)&RIP[1];
+		GPR[(int)EGPR::RSP] -= 8;
+		*(UINT64*)GPR[(int)EGPR::RSP] = (UINT64)(RIP + 5);
+		Advancement = (UINT64)RIP + 5;
+		RIP += imm + 5;
+		status = true;
+	}break;
+	case 0xFF:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 2:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+			auto ptr = GetZeroDisplacementPtr();
+			if (ptr)
+			{
+				GPR[(int)EGPR::RSP] -= 8;
+				*(UINT64*)GPR[(int)EGPR::RSP] = (UINT64)RIP;
+				Advancement = (UINT64)RIP;
+				RIP = (BYTE*)*(UINT64*)ptr;
+				status = true;
+			}
+		}break;
+		case 3:
+		{
+		}break;
+		}
+	}break;
+	};
+	
 
 	if (status)
 		printf("CALL\n");
@@ -2369,6 +2446,46 @@ bool AssemblyState::service_test()
 	return status;
 }
 
+bool AssemblyState::service_stosd()
+{
+	auto status = false;
+
+	int count = 1;
+	if (Prefix.Repeated)
+		count = (int)GPR[(int)EGPR::RCX];
+
+	for (int i = 0; i < count;)
+	{
+		auto ptr = GPR[(int)EGPR::RDI];
+
+		if (Prefix.GS)
+			ptr += GsBase;
+		else if (Prefix.FS)
+			ptr += FsBase;
+
+		if (Prefix.OperandSize)
+		{
+			*(UINT16*)ptr = (UINT16)GPR[(int)EGPR::RAX];
+			GPR[(int)EGPR::RDI] += 2;
+			i += 2;
+		}
+		else
+		{
+			*(UINT32*)ptr = (UINT32)GPR[(int)EGPR::RAX];
+			GPR[(int)EGPR::RDI] += 4;
+			i += 4;
+		}
+	}
+	
+	status = true;
+	RIP += 1;
+
+	if(status)
+		printf("STOSD\n");
+
+	return status;
+}
+
 bool AssemblyState::decode_mnemonic()
 {
 	Advancement = 0;
@@ -2376,12 +2493,22 @@ bool AssemblyState::decode_mnemonic()
 	auto start_rip = RIP;
 	Prefix = { 0 };
 
-	//skip NOPs
+	// skip NOPs
 	switch (*RIP)
 	{
 	case 0x90:
 		RIP++;
 		return true;
+	};
+
+	// repeated prefixes
+	switch (*RIP)
+	{
+	case 0xF3:
+	{
+		RIP++;
+		Prefix.Repeated = 1;
+	}break;
 	};
 
 	// segment override prefixes
@@ -2474,11 +2601,6 @@ bool AssemblyState::decode_mnemonic()
 	case 0xF2:
 	{
 		printf("Prefix F2, Aborting\n");
-		return false;
-	}break;
-	case 0xF3:
-	{
-		printf("Prefix F3, Aborting\n");
 		return false;
 	}break;
 	default:
@@ -2615,6 +2737,10 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_test();
 	}break;
+	case 0xAB:
+	{
+		status = service_stosd();
+	}break;
 	case 0xB0:
 	case 0xB1:
 	case 0xB2:
@@ -2681,6 +2807,11 @@ bool AssemblyState::decode_mnemonic()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Register)
 		{
+		case 2:
+		case 3:
+		{
+			status = service_call();
+		}break;
 		case 6:
 		{
 			status = service_push();
