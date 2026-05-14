@@ -469,13 +469,32 @@ bool AssemblyState::service_mov()
 	case 0x88:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
-		auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-		*(BYTE*)&GPR[modrm_register_memory] = *(BYTE*)&GPR[modrm_register];
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				*(BYTE*)ptr = *(BYTE*)&GPR[modrm_register];
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
-		RIP += 2;
-		status = true;
+			*(BYTE*)&GPR[modrm_register_memory] = *(BYTE*)&GPR[modrm_register];
+
+			RIP += 2;
+			status = true;
+		}break;
+		};
 	}break;
 	case 0x89:
 	{
