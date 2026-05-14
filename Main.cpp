@@ -774,10 +774,24 @@ bool AssemblyState::service_jmp()
 	auto opcode = (BYTE*)RIP;
 	switch (*opcode)
 	{
-	case 0x74:
+	case 0x70:
 	{
 		auto imm = *(INT8*)(opcode + 1);
-		if (FLAGS.ZF == 0)
+		if (FLAGS.OF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2; 
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x71:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.OF)
 		{
 			RIP += 2;
 		}
@@ -786,7 +800,209 @@ bool AssemblyState::service_jmp()
 			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
-		
+		status = true;
+	}break;
+	case 0x72:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.CF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x73:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.CF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		status = true;
+	}break;
+	case 0x74:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.ZF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+			
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x75:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.ZF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		status = true;
+	}break;
+	case 0x76:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.CF || FLAGS.ZF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x77:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.CF == 0 && FLAGS.ZF == 0)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x78:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.SF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x79:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.SF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		status = true;
+	}break;
+	case 0x7A:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.PF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x7B:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.PF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		status = true;
+	}break;
+	case 0x7C:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.SF != FLAGS.OF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x7D:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.SF == FLAGS.OF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
+		status = true;
+	}break;
+	case 0x7E:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.ZF || FLAGS.SF != FLAGS.OF)
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+
+		}
+		else
+		{
+			RIP += 2;
+		}
+		status = true;
+	}break;
+	case 0x7F:
+	{
+		auto imm = *(INT8*)(opcode + 1);
+		if (FLAGS.ZF && FLAGS.SF == FLAGS.OF)
+		{
+			RIP += 2;
+		}
+		else
+		{
+			Advancement = (UINT64)RIP + 2;
+			RIP += imm + 2;
+		}
 		status = true;
 	}break;
 	case 0xE9:
@@ -4373,7 +4589,22 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_push();
 	}break;
+	case 0x70:
+	case 0x71:
+	case 0x72:
+	case 0x73:
 	case 0x74:
+	case 0x75:
+	case 0x76:
+	case 0x77:
+	case 0x78:
+	case 0x79:
+	case 0x7A:
+	case 0x7B:
+	case 0x7C:
+	case 0x7D:
+	case 0x7E:
+	case 0x7F:
 	{
 		status = service_jmp();
 	}break;
@@ -4634,8 +4865,8 @@ void test()
 int main()
 {
 	auto engine = new AssemblyState();
-	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x10000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x8000);
-	engine->SetRip((PVOID)test);
+	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
+	engine->SetRip((PVOID)main);
 	//auto code = "\x83\x3D\x76\x01\x00\x00\x00\x83\x3D\x17\x00\x00\x00\x00\x83\x7C\x24\x16\x00\x83\x3C\x24\x00\x83\x3C\xC4\x00\x83\x7D\x00\x00\x83\x3B\x00\x83\x38\x00\x83\xBC\x24\x76\x01\x00\x00\x00\x83\xB8\x76\x01\x00\x00\x00\x83\xBC\x04\x76\x01\x00\x00\x00\x83\xBC\xDC\x76\x01\x00\x00\x00";
 	//engine->SetRip((PVOID)code);
 	int counter = 0;
