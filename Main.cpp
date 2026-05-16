@@ -101,6 +101,15 @@ private:
 	bool service_or();
 	bool service_and();
 
+	bool service_rol();
+	bool service_ror();
+	bool service_rcl();
+	bool service_rcr();
+	bool service_sal();
+	bool service_shr();
+	bool service_shl();
+	bool service_sar();
+
 	bool service_test();
 	bool service_cmp();
 
@@ -6142,6 +6151,2070 @@ bool AssemblyState::service_and()
 	return status;
 }
 
+bool AssemblyState::service_rol()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break; 
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_ror()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_rcl()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_rcr()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_sal()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_shr()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_shl()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
+bool AssemblyState::service_sar()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0xC0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = RIP[2];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = RIP[2];
+
+		}break;
+		};
+	}break;
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = RIP[2];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = RIP[2];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = RIP[2];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = RIP[2];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = RIP[2];
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD0:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = 1;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = 1;
+		}break;
+		};
+	}break;
+	case 0xD1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = 1;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = 1;
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = 1;
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = 1;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = 1;
+				}
+			}
+		}break;
+		};
+	}break;
+	case 0xD2:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto dest = *(UINT8*)ptr;
+				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+		}break;
+		};
+	}break;
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				if (Prefix.W)
+				{
+					auto dest = *(UINT64*)ptr;
+					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto dest = *(UINT16*)ptr;
+						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+					else
+					{
+						auto dest = *(UINT32*)ptr;
+						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					}
+				}
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+				else
+				{
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+				}
+			}
+		}break;
+		};
+	}break;
+	}
+
+	return status;
+}
+
 bool AssemblyState::service_test()
 {
 	bool status = false;
@@ -7626,7 +9699,6 @@ bool AssemblyState::decode_mnemonic()
 		break;
 	};
 
-	// second pass for 0F prefix
 	// third pass for primary opcode
 	switch (*RIP)
 	{
@@ -7763,67 +9835,7 @@ bool AssemblyState::decode_mnemonic()
 		status = service_jmp();
 	}break;
 	case 0x80:
-	{
-		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Register)
-		{
-		case 0:
-		{
-			status = service_add();
-		}break;
-		case 1:
-		{
-			status = service_or();
-		}break;
-		case 4:
-		{
-			status = service_and();
-		}break;
-		case 5:
-		{
-			status = service_sub();
-		}break;
-		case 6:
-		{
-			status = service_xor();
-		}break;
-		case 7:
-		{
-			status = service_cmp();
-		}break;
-		};
-	}break;
 	case 0x81:
-	{
-		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Register)
-		{
-		case 0:
-		{
-			status = service_add();
-		}break;
-		case 1:
-		{
-			status = service_or();
-		}break;
-		case 4:
-		{
-			status = service_and();
-		}break;
-		case 5:
-		{
-			status = service_sub();
-		}break;
-		case 6:
-		{
-			status = service_xor();
-		}break;
-		case 7:
-		{
-			status = service_cmp();
-		}break;
-		};
-	}break;
 	case 0x83:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
@@ -7913,6 +9925,46 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_mov();
 	}break;
+	case 0xC0:
+	case 0xC1:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 0:
+		{
+			status = service_rol();
+		}break;
+		case 1:
+		{
+			status = service_ror();
+		}break;
+		case 2:
+		{
+			status = service_rcl();
+		}break;
+		case 3:
+		{
+			status = service_rcr();
+		}break;
+		case 4:
+		{
+			status = service_shl();
+		}break;
+		case 5:
+		{
+			status = service_shr();
+		}break;
+		case 6:
+		{
+			status = service_sar();
+		}break;
+		case  7:
+		{
+			status = service_shl();
+		}break;
+		};
+	}break;
 	case 0xC3:
 	{
 		status = service_ret();
@@ -7921,6 +9973,48 @@ bool AssemblyState::decode_mnemonic()
 	case 0xC7:
 	{
 		status = service_mov();
+	}break;
+	case 0xD0:
+	case 0xD1:
+	case 0xD2:
+	case 0xD3:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 0:
+		{
+			status = service_rol();
+		}break;
+		case 1:
+		{
+			status = service_ror();
+		}break;
+		case 2:
+		{
+			status = service_rcl();
+		}break;
+		case 3:
+		{
+			status = service_rcr();
+		}break;
+		case 4:
+		{
+			status = service_shl();
+		}break;
+		case 5:
+		{
+			status = service_shr();
+		}break;
+		case 6:
+		{
+			status = service_sar();
+		}break;
+		case  7:
+		{
+			status = service_shl();
+		}break;
+		};
 	}break;
 	case 0xE8:
 	{
@@ -8044,9 +10138,7 @@ int main()
 {
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
-	engine->SetRip((PVOID)test);
-	//auto code = "\x83\x3D\x76\x01\x00\x00\x00\x83\x3D\x17\x00\x00\x00\x00\x83\x7C\x24\x16\x00\x83\x3C\x24\x00\x83\x3C\xC4\x00\x83\x7D\x00\x00\x83\x3B\x00\x83\x38\x00\x83\xBC\x24\x76\x01\x00\x00\x00\x83\xB8\x76\x01\x00\x00\x00\x83\xBC\x04\x76\x01\x00\x00\x00\x83\xBC\xDC\x76\x01\x00\x00\x00";
-	//engine->SetRip((PVOID)code);
+	engine->SetRip((PVOID)main);
 	int counter = 0;
 	while (engine->step())
 	{
@@ -8056,4 +10148,3 @@ int main()
 
 	return 0;
 }
-
