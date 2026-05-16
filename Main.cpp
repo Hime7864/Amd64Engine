@@ -1,8 +1,6 @@
 #include <Windows.h>
 #include <stdio.h>
 
-//2625 flags fucked for add still doing sub
-
 struct EFLAGS
 {
 	BYTE CF : 1;
@@ -100,6 +98,8 @@ private:
 	bool service_sub();
 	bool service_add();
 	bool service_xor();
+	bool service_or();
+	bool service_and();
 
 	bool service_test();
 	bool service_cmp();
@@ -418,54 +418,170 @@ bool AssemblyState::service_mov()
 	case 0x0F:
 	{
 		RIP++;
+		bool state = false;
 		switch (*RIP)
 		{
-		case 0xB6:
+		case 0x40:
+			state = FLAGS.OF;
+			break;
+		case 0x41:
+			state = !FLAGS.OF;
+			break;
+		case 0x42:
+			state = FLAGS.CF;
+			break;
+		case 0x43:
+			state = !FLAGS.CF;
+			break;
+		case 0x44:
+			state = FLAGS.ZF;
+			break;
+		case 0x45:
+			state = !FLAGS.ZF;
+			break;
+		case 0x46:
+			state = FLAGS.CF || FLAGS.ZF;
+			break;
+		case 0x47:
+			state = (!FLAGS.CF && !FLAGS.ZF);
+			break;
+		case 0x48:
+			state = FLAGS.SF;
+			break;
+		case 0x49:
+			state = !FLAGS.SF;
+			break;
+		case 0x4A:
+			state = FLAGS.PF;
+			break;
+		case 0x4B:
+			state = !FLAGS.PF;
+			break;
+		case 0x4C:
+			state = FLAGS.SF != FLAGS.OF;
+			break;
+		case 0x4D:
+			state = FLAGS.SF == FLAGS.OF;
+			break;
+		case 0x4E:
+			state = FLAGS.ZF && (FLAGS.SF != FLAGS.OF);
+			break;
+		case 0x4F:
+			state = !FLAGS.ZF && (FLAGS.SF == FLAGS.OF);
+			break;
+		};
+		if (*RIP >= 0x40 && *RIP <= 0x4F)
 		{
 			auto modrm = (MODRM*)&RIP[1];
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
+			switch (modrm->Mode)
 			{
-				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
-				if (Prefix.W)
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
 				{
-					GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
-				}
-				else
-				{
-					if (Prefix.OperandSize)
+					if (state)
 					{
-						*(UINT16*)&GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
+						auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+						if (Prefix.W)
+						{
+							*(UINT64*)&GPR[modrm_register] = *(UINT64*)ptr;
+						}
+						else
+						{
+							if (Prefix.OperandSize)
+							{
+								*(UINT16*)&GPR[modrm_register] = *(UINT16*)ptr;
+							}
+							else
+							{
+								*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
+							}
+						}
+					}
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				if (state)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					if (Prefix.W)
+					{
+						*(UINT64*)&GPR[modrm_register] = *(UINT64*)&GPR[modrm_register_memory];
 					}
 					else
 					{
-						*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
+						if (Prefix.OperandSize)
+						{
+							*(UINT16*)&GPR[modrm_register] = *(UINT16*)&GPR[modrm_register_memory];
+						}
+						else
+						{
+							*(UINT32*)&GPR[modrm_register] = *(UINT32*)&GPR[modrm_register_memory];
+						}
 					}
 				}
+				RIP += 2;
 				status = true;
+			}break;
 			}
-			else
+		}
+		else
+		{
+			switch (*RIP)
 			{
-				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
-				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-				if (Prefix.W)
+			case 0xB6:
+			{
+				auto modrm = (MODRM*)&RIP[1];
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
 				{
-					GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
-				}
-				else
-				{
-					if (Prefix.OperandSize)
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					if (Prefix.W)
 					{
-						*(UINT16*)&GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
+						GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
 					}
 					else
 					{
-						*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
+						if (Prefix.OperandSize)
+						{
+							*(UINT16*)&GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
+						}
+						else
+						{
+							*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
+						}
 					}
+					status = true;
 				}
-				status = true;
+				else
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					if (Prefix.W)
+					{
+						GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							*(UINT16*)&GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
+						}
+						else
+						{
+							*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
+						}
+					}
+					status = true;
+				}
+			}break;
 			}
-		}break;
 		}
 	}break;
 	case 0x88:
@@ -938,12 +1054,99 @@ bool AssemblyState::service_lea()
 bool AssemblyState::service_jmp()
 {
 	bool status = false;
-	auto opcode = (BYTE*)RIP;
-	switch (*opcode)
+	switch (*RIP)
 	{
+	case 0x0F:
+	{
+		RIP++;
+		bool state = false;
+		switch (*RIP)
+		{
+		case 0x80:
+			state = FLAGS.OF;
+			break;
+		case 0x81:
+			state = !FLAGS.OF;
+			break;
+		case 0x82:
+			state = FLAGS.CF;
+			break;
+		case 0x83:
+			state = !FLAGS.CF;
+			break;
+		case 0x84:
+			state = FLAGS.ZF;
+			break;
+		case 0x85:
+			state = !FLAGS.ZF;
+			break;
+		case 0x86:
+			state = FLAGS.CF || FLAGS.ZF;
+			break;
+		case 0x87:
+			state = (!FLAGS.CF && !FLAGS.ZF);
+			break;
+		case 0x88:
+			state = FLAGS.SF;
+			break;
+		case 0x89:
+			state = !FLAGS.SF;
+			break;
+		case 0x8A:
+			state = FLAGS.PF;
+			break;
+		case 0x8B:
+			state = !FLAGS.PF;
+			break;
+		case 0x8C:
+			state = FLAGS.SF != FLAGS.OF;
+			break;
+		case 0x8D:
+			state = FLAGS.SF == FLAGS.OF;
+			break;
+		case 0x8E:
+			state = FLAGS.ZF && (FLAGS.SF != FLAGS.OF);
+			break;
+		case 0x8F:
+			state = !FLAGS.ZF && (FLAGS.SF == FLAGS.OF);
+			break;
+		};
+		
+		if (*RIP >= 0x80 && *RIP <= 0x8F)
+		{
+			if (Prefix.OperandSize)
+			{
+				auto imm = *(INT16*)(&RIP[1]);
+				if (state)
+				{
+					Advancement = (UINT64)RIP + 3;
+					RIP += imm + 3;
+				}
+				else
+				{
+					RIP += 3;
+				}
+				status = true;
+			}
+			else
+			{
+				auto imm = *(INT32*)(&RIP[1]);
+				if (state)
+				{
+					Advancement = (UINT64)RIP + 5;
+					RIP += imm + 5;
+				}
+				else
+				{
+					RIP += 5;
+				}
+				status = true;
+			}
+		}
+	}break;
 	case 0x70:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.OF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -957,7 +1160,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x71:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.OF)
 		{
 			RIP += 2;
@@ -971,7 +1174,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x72:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -985,7 +1188,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x73:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF)
 		{
 			RIP += 2;
@@ -999,7 +1202,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x74:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1014,7 +1217,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x75:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF)
 		{
 			RIP += 2;
@@ -1028,7 +1231,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x76:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF || FLAGS.ZF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1043,7 +1246,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x77:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF == 0 && FLAGS.ZF == 0)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1058,7 +1261,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x78:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1073,7 +1276,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x79:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF)
 		{
 			RIP += 2;
@@ -1087,7 +1290,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7A:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.PF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1102,7 +1305,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7B:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.PF)
 		{
 			RIP += 2;
@@ -1116,7 +1319,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7C:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF != FLAGS.OF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1131,7 +1334,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7D:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF == FLAGS.OF)
 		{
 			RIP += 2;
@@ -1145,7 +1348,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7E:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF || FLAGS.SF != FLAGS.OF)
 		{
 			Advancement = (UINT64)RIP + 2;
@@ -1160,7 +1363,7 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0x7F:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF && FLAGS.SF == FLAGS.OF)
 		{
 			RIP += 2;
@@ -1174,14 +1377,14 @@ bool AssemblyState::service_jmp()
 	}break;
 	case 0xE9:
 	{
-		auto imm = *(INT32*)(opcode + 1);
+		auto imm = *(INT32*)(&RIP[1]);
 		Advancement = (UINT64)RIP + 5;
 		RIP += imm + 5;
 		status = true;
 	}break;
 	case 0xEB:
 	{
-		auto imm = *(INT8*)(opcode + 1);
+		auto imm = *(INT8*)(&RIP[1]);
 		Advancement = (UINT64)RIP + 2;
 		RIP += imm + 2;
 		status = true;
@@ -1198,29 +1401,28 @@ bool AssemblyState::service_jmp()
 			{
 				Advancement = (UINT64)RIP;
 
-				if (Prefix.W)
+				if (Prefix.OperandSize)
 				{
-					RIP = (BYTE*)*(UINT64*)ptr;
+					RIP = (BYTE*)*(UINT16*)ptr;
 					status = true;
 				}
 				else
 				{
-					if (Prefix.OperandSize)
-					{
-						RIP = (BYTE*)*(UINT16*)ptr;
-						status = true;
-					}
-					else
-					{
-						RIP = (BYTE*)*(UINT32*)ptr;
-						status = true;
-					}
+					RIP = (BYTE*)*(UINT64*)ptr;
+					status = true;
 				}
 			}
 		}break;
 		case 5:
 		{
-			
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				Advancement = (UINT64)RIP;
+
+				RIP = (BYTE*)*(UINT64*)ptr;
+				status = true;
+			}
 		}break;
 		}
 	}break;
@@ -2622,14 +2824,14 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 					}
 					else
 					{
 						auto src = *(UINT32*)ptr;
 						auto dest = *(UINT32*)&GPR[modrm_register];
 
-						auto result = dest - src;
+						auto result = dest + src;
 						*(UINT32*)&GPR[modrm_register] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -2642,7 +2844,7 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 					}
 				}
 
@@ -2660,7 +2862,7 @@ bool AssemblyState::service_add()
 				auto src = *(UINT64*)&GPR[modrm_register_memory];
 				auto dest = GPR[modrm_register];
 
-				auto result = dest - src;
+				auto result = dest + src;
 
 				GPR[modrm_register] = result;
 
@@ -2674,7 +2876,7 @@ bool AssemblyState::service_add()
 
 				FLAGS.PF = (p & 1) == 0;
 				FLAGS.CF = (dest < src);
-				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 			}
 			else
 			{
@@ -2682,33 +2884,41 @@ bool AssemblyState::service_add()
 				{
 					auto src = *(UINT16*)&GPR[modrm_register_memory];
 					auto dest = *(UINT16*)&GPR[modrm_register];
-					auto result = dest - src;
+
+					auto result = dest + src;
 					*(UINT16*)&GPR[modrm_register] = result;
+
 					FLAGS.SF = (result & 0x8000) != 0;
 					FLAGS.ZF = (result == 0);
+
 					auto p = (UINT8)result;
 					p ^= p >> 4;
 					p ^= p >> 2;
 					p ^= p >> 1;
+
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 				}
 				else
 				{
 					auto src = *(UINT32*)&GPR[modrm_register_memory];
 					auto dest = *(UINT32*)&GPR[modrm_register];
-					auto result = dest - src;
+
+					auto result = dest + src;
 					*(UINT32*)&GPR[modrm_register] = result;
+
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
+
 					auto p = (UINT8)result;
 					p ^= p >> 4;
 					p ^= p >> 2;
 					p ^= p >> 1;
+
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 				}
 			}
 			RIP += 2;
@@ -2723,7 +2933,7 @@ bool AssemblyState::service_add()
 		auto src = imm;
 		auto dest = *(UINT8*)&GPR[(int)EGPR::RAX];
 
-		auto result = dest - src;
+		auto result = dest + src;
 		*(UINT8*)&GPR[(int)EGPR::RAX] = result;
 
 		FLAGS.SF = (result & 0x80) != 0;
@@ -2736,7 +2946,7 @@ bool AssemblyState::service_add()
 
 		FLAGS.PF = (p & 1) == 0;
 		FLAGS.CF = (dest < src);
-		FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+		FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 		RIP += 2;
 		status = true;
@@ -2749,7 +2959,7 @@ bool AssemblyState::service_add()
 			auto src = imm & 0xFFFF;
 			auto dest = *(UINT16*)&GPR[(int)EGPR::RAX];
 
-			auto result = dest - src;
+			auto result = dest + src;
 			*(UINT16*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x8000) != 0;
@@ -2762,7 +2972,7 @@ bool AssemblyState::service_add()
 
 			FLAGS.PF = (p & 1) == 0;
 			FLAGS.CF = (dest < src);
-			FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 
 			RIP += 5;
 			status = true;
@@ -2772,7 +2982,7 @@ bool AssemblyState::service_add()
 			auto src = imm;
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
-			auto result = dest - src;
+			auto result = dest + src;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -2785,7 +2995,7 @@ bool AssemblyState::service_add()
 
 			FLAGS.PF = (p & 1) == 0;
 			FLAGS.CF = (dest < src);
-			FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 
 			RIP += 5;
 			status = true;
@@ -2796,7 +3006,7 @@ bool AssemblyState::service_add()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Register)
 		{
-		case 5:
+		case 0:
 		{
 			auto imm = *(UINT8*)(&RIP[2]);
 
@@ -2814,7 +3024,7 @@ bool AssemblyState::service_add()
 					auto src = imm;
 					auto dest = *(UINT8*)ptr;
 
-					auto result = dest - src;
+					auto result = dest + src;
 					*(UINT8*)ptr = result;
 
 					FLAGS.SF = (result & 0x80) != 0;
@@ -2827,7 +3037,7 @@ bool AssemblyState::service_add()
 
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 					RIP += 1;
 					status = true;
@@ -2841,7 +3051,7 @@ bool AssemblyState::service_add()
 				auto src = imm;
 				auto dest = *(UINT8*)&GPR[modrm_register];
 
-				auto result = dest - src;
+				auto result = dest + src;
 				*(UINT8*)&GPR[modrm_register] = result;
 
 				FLAGS.SF = (result & 0x80) != 0;
@@ -2854,7 +3064,7 @@ bool AssemblyState::service_add()
 
 				FLAGS.PF = (p & 1) == 0;
 				FLAGS.CF = (dest < src);
-				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 				RIP += 3;
 				status = true;
 			}break;
@@ -2867,7 +3077,7 @@ bool AssemblyState::service_add()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Register)
 		{
-		case 5:
+		case 0:
 		{
 			auto imm = *(UINT32*)(&RIP[2]);
 			switch (modrm->Mode)
@@ -2884,7 +3094,7 @@ bool AssemblyState::service_add()
 						auto src = (UINT64)imm;
 						auto dest = *(UINT64*)ptr;
 
-						auto result = dest - src;
+						auto result = dest + src;
 						*(UINT64*)ptr = result;
 
 						FLAGS.SF = (result & 0x8000000000000000) != 0;
@@ -2897,7 +3107,7 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 
 						RIP += 4;
 						status = true;
@@ -2909,7 +3119,7 @@ bool AssemblyState::service_add()
 							auto src = (UINT16)imm;
 							auto dest = *(UINT16*)ptr;
 
-							auto result = dest - src;
+							auto result = dest + src;
 							*(UINT16*)ptr = result;
 
 							FLAGS.SF = (result & 0x8000) != 0;
@@ -2922,7 +3132,7 @@ bool AssemblyState::service_add()
 
 							FLAGS.PF = (p & 1) == 0;
 							FLAGS.CF = (dest < src);
-							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+							FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 
 							RIP += 2;
 							status = true;
@@ -2932,7 +3142,7 @@ bool AssemblyState::service_add()
 							auto src = imm;
 							auto dest = *(UINT32*)ptr;
 
-							auto result = dest - src;
+							auto result = dest + src;
 							*(UINT32*)ptr = result;
 
 							FLAGS.SF = (result & 0x80000000) != 0;
@@ -2945,7 +3155,7 @@ bool AssemblyState::service_add()
 
 							FLAGS.PF = (p & 1) == 0;
 							FLAGS.CF = (dest < src);
-							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+							FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 
 							RIP += 4;
 							status = true;
@@ -2961,7 +3171,7 @@ bool AssemblyState::service_add()
 					auto src = (UINT64)imm;
 					auto dest = *(UINT64*)&GPR[modrm_register_memory];
 
-					auto result = dest - src;
+					auto result = dest + src;
 					*(UINT64*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x8000000000000000) != 0;
@@ -2974,7 +3184,7 @@ bool AssemblyState::service_add()
 
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 
 					RIP += 6;
 					status = true;
@@ -2987,7 +3197,7 @@ bool AssemblyState::service_add()
 						auto src = (UINT16)imm;
 						auto dest = *(UINT16*)&GPR[modrm_register_memory];
 
-						auto result = dest - src;
+						auto result = dest + src;
 						*(UINT16*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x8000) != 0;
@@ -3000,7 +3210,7 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 
 						RIP += 4;
 						status = true;
@@ -3011,7 +3221,7 @@ bool AssemblyState::service_add()
 						auto src = imm;
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
-						auto result = dest - src;
+						auto result = dest + src;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -3024,7 +3234,7 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 
 						RIP += 6;
 						status = true;
@@ -3040,7 +3250,7 @@ bool AssemblyState::service_add()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Register)
 		{
-		case 5:
+		case 0:
 		{
 			switch (modrm->Mode)
 			{
@@ -3058,7 +3268,7 @@ bool AssemblyState::service_add()
 						auto src = (UINT64)(INT64)imm_byte;
 						auto dest = *(UINT64*)ptr;
 
-						auto result = dest - src;
+						auto result = dest + src;
 						*(UINT64*)ptr = result;
 
 						FLAGS.SF = (result & 0x8000000000000000) != 0;
@@ -3071,7 +3281,7 @@ bool AssemblyState::service_add()
 
 						FLAGS.PF = (p & 1) == 0;
 						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+						FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 					}
 					else
 					{
@@ -3080,7 +3290,7 @@ bool AssemblyState::service_add()
 							auto src = (UINT16)(INT16)imm_byte;
 							auto dest = *(UINT16*)ptr;
 
-							auto result = dest - src;
+							auto result = dest + src;
 							*(UINT16*)ptr = result;
 
 							FLAGS.SF = (result & 0x8000) != 0;
@@ -3093,14 +3303,14 @@ bool AssemblyState::service_add()
 
 							FLAGS.PF = (p & 1) == 0;
 							FLAGS.CF = (dest < src);
-							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+							FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 						}
 						else
 						{
 							auto src = (UINT32)(INT32)imm_byte;
 							auto dest = *(UINT32*)ptr;
 
-							auto result = dest - src;
+							auto result = dest + src;
 							*(UINT32*)ptr = result;
 
 							FLAGS.SF = (result & 0x80000000) != 0;
@@ -3113,7 +3323,7 @@ bool AssemblyState::service_add()
 
 							FLAGS.PF = (p & 1) == 0;
 							FLAGS.CF = (dest < src);
-							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+							FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 						}
 					}
 
@@ -3131,7 +3341,7 @@ bool AssemblyState::service_add()
 					auto src = (UINT64)(INT64)imm_byte;
 					auto dest = GPR[modrm_register_memory];
 
-					auto result = dest - src;
+					auto result = dest + src;
 					GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x8000000000000000) != 0;
@@ -3144,14 +3354,14 @@ bool AssemblyState::service_add()
 
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 				}
 				else if (Prefix.OperandSize)
 				{
 					auto src = (UINT16)(INT16)imm_byte;
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
 
-					auto result = dest - src;
+					auto result = dest + src;
 					*(UINT16*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x8000) != 0;
@@ -3164,14 +3374,14 @@ bool AssemblyState::service_add()
 
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 				}
 				else
 				{
 					auto src = (UINT32)(INT32)imm_byte;
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
-					auto result = dest - src;
+					auto result = dest + src;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -3184,7 +3394,7 @@ bool AssemblyState::service_add()
 
 					FLAGS.PF = (p & 1) == 0;
 					FLAGS.CF = (dest < src);
-					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+					FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 				}
 
 				RIP += 3;
@@ -3213,21 +3423,48 @@ bool AssemblyState::service_xor()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Mode)
 		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)&GPR[modrm_register];
+				auto dest = *(UINT8*)ptr;
+
+				auto result = dest ^ src;
+				*(UINT8*)ptr = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+
+				status = true;
+			}
+		}break;
 		case EMODE::REG_TO_REG:
 		{
-			auto idx_reg = modrm->RegisterMemory;
-			auto idx_regmem = modrm->Register;
-			if (Prefix.R)
-				idx_reg += 8;
-			if (Prefix.B)
-				idx_regmem += 8;
 
-			auto src = *(UINT8*)&GPR[idx_regmem];
-			auto dest = *(UINT8*)&GPR[idx_reg];
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+
+			auto src = *(UINT8*)&GPR[modrm_register];
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
 
 			auto result = dest ^ src;
-
-			*(UINT8*)&GPR[idx_reg] = result;
+			*(UINT8*)&GPR[modrm_register_memory] = result;
 
 			FLAGS.SF = (result & 0x80) != 0;
 			FLAGS.ZF = (result == 0);
@@ -3682,30 +3919,66 @@ bool AssemblyState::service_xor()
 		case 6:
 		{
 			auto imm = *(UINT8*)(&RIP[2]);
-			auto idx_reg = modrm->RegisterMemory;
-			if (Prefix.B)
-				idx_reg += 8;
 
-			auto src = imm;
-			auto dest = *(UINT8*)&GPR[idx_reg];
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 
-			auto result = dest ^ src;
-			*(UINT8*)&GPR[idx_reg] = result;
+					auto src = imm;
+					auto dest = *(UINT8*)ptr;
 
-			FLAGS.SF = (result & 0x80) != 0;
-			FLAGS.ZF = (result == 0);
+					auto result = dest ^ src;
+					*(UINT8*)ptr = result;
 
-			auto p = (UINT8)result;
-			p ^= p >> 4;
-			p ^= p >> 2;
-			p ^= p >> 1;
+					FLAGS.SF = (result & 0x80) != 0;
+					FLAGS.ZF = (result == 0);
 
-			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = 0;
-			FLAGS.OF = 0;
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
 
-			RIP += 3;
-			status = true;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 1;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto src = imm;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+
+				auto result = dest ^ src;
+				*(UINT8*)&GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+				RIP += 3;
+				status = true;
+			}break;
+			};
 		}break;
 		};
 	}break;
@@ -3717,30 +3990,168 @@ bool AssemblyState::service_xor()
 		case 6:
 		{
 			auto imm = *(UINT32*)(&RIP[2]);
-			auto idx_reg = modrm->RegisterMemory;
-			if (Prefix.B)
-				idx_reg += 8;
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					if (Prefix.W)
+					{
+						auto src = (UINT64)imm;
+						auto dest = *(UINT64*)ptr;
 
-			auto src = imm;
-			auto dest = GPR[idx_reg];
+						auto result = dest ^ src;
+						*(UINT64*)ptr = result;
 
-			auto result = dest ^ src;
-			GPR[idx_reg] = result;
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
 
-			FLAGS.SF = (result & 0x8000000000000000) != 0;
-			FLAGS.ZF = (result == 0);
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
 
-			auto p = (UINT8)result;
-			p ^= p >> 4;
-			p ^= p >> 2;
-			p ^= p >> 1;
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
 
-			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = 0;
-			FLAGS.OF = 0;
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)imm;
+							auto dest = *(UINT16*)ptr;
 
-			RIP += 6;
-			status = true;
+							auto result = dest ^ src;
+							*(UINT16*)ptr = result;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 2;
+							status = true;
+						}
+						else
+						{
+							auto src = imm;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest ^ src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 4;
+							status = true;
+						}
+					}
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				if (Prefix.W)
+				{
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					auto src = (UINT64)imm;
+					auto dest = *(UINT64*)&GPR[modrm_register_memory];
+
+					auto result = dest ^ src;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 6;
+					status = true;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = (UINT16)imm;
+						auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+						auto result = dest ^ src;
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x8000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = imm;
+						auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+						auto result = dest ^ src;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x80000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 6;
+						status = true;
+					}
+				}
+			}break;
+			};
 		}break;
 		};
 	}break;
@@ -3782,65 +4193,66 @@ bool AssemblyState::service_xor()
 						FLAGS.CF = 0;
 						FLAGS.OF = 0;
 					}
-					else if (Prefix.OperandSize)
-					{
-						auto src = (UINT16)(INT16)imm_byte;
-						auto dest = *(UINT16*)ptr;
-
-						auto result = dest ^ src;
-						*(UINT16*)ptr = result;
-
-						FLAGS.SF = (result & 0x8000) != 0;
-						FLAGS.ZF = (result == 0);
-
-						auto p = (UINT8)result;
-						p ^= p >> 4;
-						p ^= p >> 2;
-						p ^= p >> 1;
-
-						FLAGS.PF = (p & 1) == 0;
-						FLAGS.CF = 0;
-						FLAGS.OF = 0;
-					}
 					else
 					{
-						auto src = (UINT32)(INT32)imm_byte;
-						auto dest = *(UINT32*)ptr;
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)(INT16)imm_byte;
+							auto dest = *(UINT16*)ptr;
 
-						auto result = dest ^ src;
-						*(UINT32*)ptr = result;
+							auto result = dest ^ src;
+							*(UINT16*)ptr = result;
 
-						FLAGS.SF = (result & 0x80000000) != 0;
-						FLAGS.ZF = (result == 0);
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
 
-						auto p = (UINT8)result;
-						p ^= p >> 4;
-						p ^= p >> 2;
-						p ^= p >> 1;
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
 
-						FLAGS.PF = (p & 1) == 0;
-						FLAGS.CF = 0;
-						FLAGS.OF = 0;
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
+						else
+						{
+							auto src = (UINT32)(INT32)imm_byte;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest ^ src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
 					}
 
-					RIP += 1;
+					RIP++;
 					status = true;
 				}
 			}break;
 			case EMODE::REG_TO_REG:
 			{
 				auto imm_byte = *(INT8*)(&RIP[2]);
-				auto idx_reg = modrm->RegisterMemory;
-				if (Prefix.B)
-					idx_reg += 8;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 				if (Prefix.W)
 				{
 					auto src = (UINT64)(INT64)imm_byte;
-					auto dest = GPR[idx_reg];
+					auto dest = GPR[modrm_register_memory];
 
 					auto result = dest ^ src;
-					GPR[idx_reg] = result;
+					GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x8000000000000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -3857,10 +4269,10 @@ bool AssemblyState::service_xor()
 				else if (Prefix.OperandSize)
 				{
 					auto src = (UINT16)(INT16)imm_byte;
-					auto dest = *(UINT16*)&GPR[idx_reg];
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
 
 					auto result = dest ^ src;
-					*(UINT16*)&GPR[idx_reg] = result;
+					*(UINT16*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x8000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -3877,10 +4289,10 @@ bool AssemblyState::service_xor()
 				else
 				{
 					auto src = (UINT32)(INT32)imm_byte;
-					auto dest = *(UINT32*)&GPR[idx_reg];
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest ^ src;
-					*(UINT32*)&GPR[idx_reg] = result;
+					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -3906,6 +4318,1826 @@ bool AssemblyState::service_xor()
 
 	if (status)
 		printf("XOR");
+
+	return status;
+}
+
+bool AssemblyState::service_or()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0x08:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)&GPR[modrm_register];
+				auto dest = *(UINT8*)ptr;
+
+				auto result = dest | src;
+				*(UINT8*)ptr = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+
+			auto src = *(UINT8*)&GPR[modrm_register];
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+
+			auto result = dest | src;
+			*(UINT8*)&GPR[modrm_register_memory] = result;
+
+			FLAGS.SF = (result & 0x80) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x09:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				if (Prefix.W)
+				{
+					auto src = GPR[modrm_register];
+					auto dest = *(UINT64*)ptr;
+
+					auto result = dest | src;
+
+					*(UINT64*)ptr = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register];
+					auto dest = *(UINT16*)ptr;
+
+					auto result = dest | src;
+
+					*(UINT16*)ptr = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register];
+					auto dest = *(UINT32*)ptr;
+
+					auto result = dest | src;
+
+					*(UINT32*)ptr = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto src = GPR[modrm_register];
+				auto dest = GPR[modrm_register_memory];
+
+				auto result = dest | src;
+
+				GPR[modrm_register_memory] = result;
+
+				FLAGS.SF = (result & 0x8000000000000000) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register];
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto result = dest | src;
+					*(UINT16*)&GPR[modrm_register_memory] = result;
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register];
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto result = dest | src;
+					*(UINT32*)&GPR[modrm_register_memory] = result;
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x0A:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		log_ModRM(modrm);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)ptr;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+				auto result = dest | src;
+
+				*(UINT8*)&GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto src = *(UINT8*)&GPR[modrm_register_memory];
+			auto dest = *(UINT8*)&GPR[modrm_register];
+			auto result = dest | src;
+
+			*(UINT8*)&GPR[modrm_register] = result;
+
+			FLAGS.SF = (result & 0x80) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x0B:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				if (Prefix.W)
+				{
+					auto src = *(UINT64*)ptr;
+					auto dest = GPR[modrm_register];
+
+					auto result = dest | src;
+					GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)ptr;
+					auto dest = *(UINT16*)&GPR[modrm_register];
+
+					auto result = dest | src;
+					*(UINT16*)&GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)ptr;
+					auto dest = *(UINT32*)&GPR[modrm_register];
+
+					auto result = dest | src;
+					*(UINT32*)&GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto src = *(UINT64*)&GPR[modrm_register_memory];
+				auto dest = GPR[modrm_register];
+
+				auto result = dest | src;
+
+				GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x8000000000000000) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register_memory];
+					auto dest = *(UINT16*)&GPR[modrm_register];
+					auto result = dest | src;
+					*(UINT16*)&GPR[modrm_register] = result;
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register_memory];
+					auto dest = *(UINT32*)&GPR[modrm_register];
+					auto result = dest | src;
+					*(UINT32*)&GPR[modrm_register] = result;
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x0C:
+	{
+		auto imm = *(UINT8*)(&RIP[1]);
+
+		auto src = imm;
+		auto dest = *(UINT8*)&GPR[(int)EGPR::RAX];
+
+		auto result = dest | src;
+		*(UINT8*)&GPR[(int)EGPR::RAX] = result;
+
+		FLAGS.SF = (result & 0x80) != 0;
+		FLAGS.ZF = (result == 0);
+
+		auto p = (UINT8)result;
+		p ^= p >> 4;
+		p ^= p >> 2;
+		p ^= p >> 1;
+
+		FLAGS.PF = (p & 1) == 0;
+		FLAGS.CF = 0;
+		FLAGS.OF = 0;
+
+		RIP += 2;
+		status = true;
+	}break;
+	case 0x0D:
+	{
+		auto imm = *(UINT32*)(&RIP[1]);
+		if (Prefix.OperandSize)
+		{
+			auto src = imm & 0xFFFF;
+			auto dest = *(UINT16*)&GPR[(int)EGPR::RAX];
+
+			auto result = dest | src;
+			*(UINT16*)&GPR[(int)EGPR::RAX] = result;
+
+			FLAGS.SF = (result & 0x8000) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 5;
+			status = true;
+		}
+		else
+		{
+			auto src = imm;
+			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
+
+			auto result = dest | src;
+			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
+
+			FLAGS.SF = (result & 0x80000000) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 5;
+			status = true;
+		}
+	}break;
+	case 0x80:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 1:
+		{
+			auto imm = *(UINT8*)(&RIP[2]);
+
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+					auto src = imm;
+					auto dest = *(UINT8*)ptr;
+
+					auto result = dest | src;
+					*(UINT8*)ptr = result;
+
+					FLAGS.SF = (result & 0x80) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 1;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto src = imm;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+
+				auto result = dest | src;
+				*(UINT8*)&GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+				RIP += 3;
+				status = true;
+			}break;
+			};
+		}break;
+		};
+	}break;
+	case 0x81:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 1:
+		{
+			auto imm = *(UINT32*)(&RIP[2]);
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					if (Prefix.W)
+					{
+						auto src = (UINT64)imm;
+						auto dest = *(UINT64*)ptr;
+
+						auto result = dest | src;
+						*(UINT64*)ptr = result;
+
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)imm;
+							auto dest = *(UINT16*)ptr;
+
+							auto result = dest | src;
+							*(UINT16*)ptr = result;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 2;
+							status = true;
+						}
+						else
+						{
+							auto src = imm;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest | src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 4;
+							status = true;
+						}
+					}
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				if (Prefix.W)
+				{
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					auto src = (UINT64)imm;
+					auto dest = *(UINT64*)&GPR[modrm_register_memory];
+
+					auto result = dest | src;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 6;
+					status = true;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = (UINT16)imm;
+						auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+						auto result = dest | src;
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x8000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = imm;
+						auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+						auto result = dest | src;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x80000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 6;
+						status = true;
+					}
+				}
+			}break;
+			};
+		}break;
+		};
+	}break;
+	case 0x83:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 1:
+		{
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto imm_byte = *(INT8*)RIP;
+
+					if (Prefix.W)
+					{
+						auto src = (UINT64)(INT64)imm_byte;
+						auto dest = *(UINT64*)ptr;
+
+						auto result = dest | src;
+						*(UINT64*)ptr = result;
+
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)(INT16)imm_byte;
+							auto dest = *(UINT16*)ptr;
+
+							auto result = dest | src;
+							*(UINT16*)ptr = result;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
+						else
+						{
+							auto src = (UINT32)(INT32)imm_byte;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest | src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
+					}
+
+					RIP++;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto imm_byte = *(INT8*)(&RIP[2]);
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				if (Prefix.W)
+				{
+					auto src = (UINT64)(INT64)imm_byte;
+					auto dest = GPR[modrm_register_memory];
+
+					auto result = dest | src;
+					GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = (UINT16)(INT16)imm_byte;
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+					auto result = dest | src;
+					*(UINT16*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = (UINT32)(INT32)imm_byte;
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+					auto result = dest | src;
+					*(UINT32*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+
+				RIP += 3;
+				status = true;
+			}break;
+			};
+		}break;
+		};
+	}break;
+	};
+
+	if (status)
+		printf("OR");
+
+	return status;
+}
+
+bool AssemblyState::service_and()
+{
+	bool status = false;
+
+	switch (*RIP)
+	{
+	case 0x20:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)&GPR[modrm_register];
+				auto dest = *(UINT8*)ptr;
+
+				auto result = dest & src;
+				*(UINT8*)ptr = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+
+			auto src = *(UINT8*)&GPR[modrm_register];
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+
+			auto result = dest & src;
+			*(UINT8*)&GPR[modrm_register_memory] = result;
+
+			FLAGS.SF = (result & 0x80) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x21:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				if (Prefix.W)
+				{
+					auto src = GPR[modrm_register];
+					auto dest = *(UINT64*)ptr;
+
+					auto result = dest & src;
+
+					*(UINT64*)ptr = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register];
+					auto dest = *(UINT16*)ptr;
+
+					auto result = dest & src;
+
+					*(UINT16*)ptr = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register];
+					auto dest = *(UINT32*)ptr;
+
+					auto result = dest & src;
+
+					*(UINT32*)ptr = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto src = GPR[modrm_register];
+				auto dest = GPR[modrm_register_memory];
+
+				auto result = dest & src;
+
+				GPR[modrm_register_memory] = result;
+
+				FLAGS.SF = (result & 0x8000000000000000) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register];
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+					auto result = dest & src;
+					*(UINT16*)&GPR[modrm_register_memory] = result;
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register];
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+					auto result = dest & src;
+					*(UINT32*)&GPR[modrm_register_memory] = result;
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x22:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		log_ModRM(modrm);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)ptr;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+				auto result = dest & src;
+
+				*(UINT8*)&GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			auto src = *(UINT8*)&GPR[modrm_register_memory];
+			auto dest = *(UINT8*)&GPR[modrm_register];
+			auto result = dest & src;
+
+			*(UINT8*)&GPR[modrm_register] = result;
+
+			FLAGS.SF = (result & 0x80) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x23:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				if (Prefix.W)
+				{
+					auto src = *(UINT64*)ptr;
+					auto dest = GPR[modrm_register];
+
+					auto result = dest & src;
+					GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)ptr;
+					auto dest = *(UINT16*)&GPR[modrm_register];
+
+					auto result = dest | src;
+					*(UINT16*)&GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)ptr;
+					auto dest = *(UINT32*)&GPR[modrm_register];
+
+					auto result = dest | src;
+					*(UINT32*)&GPR[modrm_register] = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+			if (Prefix.W)
+			{
+				auto src = *(UINT64*)&GPR[modrm_register_memory];
+				auto dest = GPR[modrm_register];
+
+				auto result = dest & src;
+
+				GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x8000000000000000) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+			}
+			else
+			{
+				if (Prefix.OperandSize)
+				{
+					auto src = *(UINT16*)&GPR[modrm_register_memory];
+					auto dest = *(UINT16*)&GPR[modrm_register];
+					auto result = dest & src;
+					*(UINT16*)&GPR[modrm_register] = result;
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = *(UINT32*)&GPR[modrm_register_memory];
+					auto dest = *(UINT32*)&GPR[modrm_register];
+					auto result = dest & src;
+					*(UINT32*)&GPR[modrm_register] = result;
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		};
+	}break;
+	case 0x24:
+	{
+		auto imm = *(UINT8*)(&RIP[1]);
+
+		auto src = imm;
+		auto dest = *(UINT8*)&GPR[(int)EGPR::RAX];
+
+		auto result = dest & src;
+		*(UINT8*)&GPR[(int)EGPR::RAX] = result;
+
+		FLAGS.SF = (result & 0x80) != 0;
+		FLAGS.ZF = (result == 0);
+
+		auto p = (UINT8)result;
+		p ^= p >> 4;
+		p ^= p >> 2;
+		p ^= p >> 1;
+
+		FLAGS.PF = (p & 1) == 0;
+		FLAGS.CF = 0;
+		FLAGS.OF = 0;
+
+		RIP += 2;
+		status = true;
+	}break;
+	case 0x25:
+	{
+		auto imm = *(UINT32*)(&RIP[1]);
+		if (Prefix.OperandSize)
+		{
+			auto src = imm & 0xFFFF;
+			auto dest = *(UINT16*)&GPR[(int)EGPR::RAX];
+
+			auto result = dest & src;
+			*(UINT16*)&GPR[(int)EGPR::RAX] = result;
+
+			FLAGS.SF = (result & 0x8000) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 5;
+			status = true;
+		}
+		else
+		{
+			auto src = imm;
+			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
+
+			auto result = dest & src;
+			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
+
+			FLAGS.SF = (result & 0x80000000) != 0;
+			FLAGS.ZF = (result == 0);
+
+			auto p = (UINT8)result;
+			p ^= p >> 4;
+			p ^= p >> 2;
+			p ^= p >> 1;
+
+			FLAGS.PF = (p & 1) == 0;
+			FLAGS.CF = 0;
+			FLAGS.OF = 0;
+
+			RIP += 5;
+			status = true;
+		}
+	}break;
+	case 0x80:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 4:
+		{
+			auto imm = *(UINT8*)(&RIP[2]);
+
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+					auto src = imm;
+					auto dest = *(UINT8*)ptr;
+
+					auto result = dest & src;
+					*(UINT8*)ptr = result;
+
+					FLAGS.SF = (result & 0x80) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 1;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto src = imm;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+
+				auto result = dest & src;
+				*(UINT8*)&GPR[modrm_register] = result;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+				RIP += 3;
+				status = true;
+			}break;
+			};
+		}break;
+		};
+	}break;
+	case 0x81:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 4:
+		{
+			auto imm = *(UINT32*)(&RIP[2]);
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					if (Prefix.W)
+					{
+						auto src = (UINT64)imm;
+						auto dest = *(UINT64*)ptr;
+
+						auto result = dest & src;
+						*(UINT64*)ptr = result;
+
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)imm;
+							auto dest = *(UINT16*)ptr;
+
+							auto result = dest & src;
+							*(UINT16*)ptr = result;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 2;
+							status = true;
+						}
+						else
+						{
+							auto src = imm;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest & src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+
+							RIP += 4;
+							status = true;
+						}
+					}
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				if (Prefix.W)
+				{
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					auto src = (UINT64)imm;
+					auto dest = *(UINT64*)&GPR[modrm_register_memory];
+
+					auto result = dest & src;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+
+					RIP += 6;
+					status = true;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = (UINT16)imm;
+						auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+						auto result = dest & src;
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x8000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = imm;
+						auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+						auto result = dest & src;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.SF = (result & 0x80000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+
+						RIP += 6;
+						status = true;
+					}
+				}
+			}break;
+			};
+		}break;
+		};
+	}break;
+	case 0x83:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Register)
+		{
+		case 4:
+		{
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto imm_byte = *(INT8*)RIP;
+
+					if (Prefix.W)
+					{
+						auto src = (UINT64)(INT64)imm_byte;
+						auto dest = *(UINT64*)ptr;
+
+						auto result = dest & src;
+						*(UINT64*)ptr = result;
+
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)(INT16)imm_byte;
+							auto dest = *(UINT16*)ptr;
+
+							auto result = dest & src;
+							*(UINT16*)ptr = result;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
+						else
+						{
+							auto src = (UINT32)(INT32)imm_byte;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest & src;
+							*(UINT32*)ptr = result;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+						}
+					}
+
+					RIP++;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto imm_byte = *(INT8*)(&RIP[2]);
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				if (Prefix.W)
+				{
+					auto src = (UINT64)(INT64)imm_byte;
+					auto dest = GPR[modrm_register_memory];
+
+					auto result = dest & src;
+					GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else if (Prefix.OperandSize)
+				{
+					auto src = (UINT16)(INT16)imm_byte;
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+					auto result = dest & src;
+					*(UINT16*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x8000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+				else
+				{
+					auto src = (UINT32)(INT32)imm_byte;
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+					auto result = dest & src;
+					*(UINT32*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.SF = (result & 0x80000000) != 0;
+					FLAGS.ZF = (result == 0);
+
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
+
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+				}
+
+				RIP += 3;
+				status = true;
+			}break;
+			};
+		}break;
+		};
+	}break;
+	};
+
+	if (status)
+		printf("AND");
 
 	return status;
 }
@@ -4166,22 +6398,54 @@ bool AssemblyState::service_test()
 		case 1:
 		{
 			//r/m8, imm8
-			auto modrm_registermemory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-			auto imm = *(UINT8*)(&RIP[2]);
-			auto src = *(UINT8*)&GPR[modrm_registermemory];
-			auto dest = imm;
-			auto temp = src & dest;
-			FLAGS.SF = (temp & 0x80) != 0;
-			FLAGS.ZF = (temp == 0);
-			auto byte = (UINT8)temp;
-			byte ^= byte >> 4;
-			byte ^= byte >> 2;
-			byte ^= byte >> 1;
-			FLAGS.PF = (byte & 1) == 0;
-			FLAGS.CF = 0;
-			FLAGS.OF = 0;
-			RIP += 3;
-			status = true;
+
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto imm = *(UINT8*)(&RIP[2]);
+					auto src = imm;
+					auto dest = *(UINT8*)ptr;
+					auto temp = src & dest;
+					FLAGS.SF = (temp & 0x80) != 0;
+					FLAGS.ZF = (temp == 0);
+					auto byte = (UINT8)temp;
+					byte ^= byte >> 4;
+					byte ^= byte >> 2;
+					byte ^= byte >> 1;
+					FLAGS.PF = (byte & 1) == 0;
+					FLAGS.CF = 0;
+					FLAGS.OF = 0;
+					RIP += 1;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_registermemory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto imm = *(UINT8*)(&RIP[2]);
+				auto src = *(UINT8*)&GPR[modrm_registermemory];
+				auto dest = imm;
+				auto temp = src & dest;
+				FLAGS.SF = (temp & 0x80) != 0;
+				FLAGS.ZF = (temp == 0);
+				auto byte = (UINT8)temp;
+				byte ^= byte >> 4;
+				byte ^= byte >> 2;
+				byte ^= byte >> 1;
+				FLAGS.PF = (byte & 1) == 0;
+				FLAGS.CF = 0;
+				FLAGS.OF = 0;
+				RIP += 3;
+				status = true;
+			}break;
+			};
 		}break;
 		};
 	}break;
@@ -4194,33 +6458,83 @@ bool AssemblyState::service_test()
 		case 1:
 		{
 			//r/m16/32/64, imm16/32
-			auto modrm_registermemory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-			auto imm = *(UINT32*)(&RIP[2]);
-			if (Prefix.W)
+			switch (modrm->Mode)
 			{
-				auto src = GPR[modrm_registermemory];
-				auto dest = imm;
-				auto temp = src & dest;
-				FLAGS.SF = (temp & 0x8000000000000000) != 0;
-				FLAGS.ZF = (temp == 0);
-				auto byte = (UINT8)temp;
-				byte ^= byte >> 4;
-				byte ^= byte >> 2;
-				byte ^= byte >> 1;
-				FLAGS.PF = (byte & 1) == 0;
-				FLAGS.CF = 0;
-				FLAGS.OF = 0;
-				RIP += 6;
-				status = true;
-			}
-			else
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
 			{
-				if (Prefix.OperandSize)
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
 				{
-					auto src = *(UINT16*)&GPR[modrm_registermemory];
-					auto dest = imm & 0xFFFF;
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto imm = *(UINT32*)(&RIP[2]);
+					if (Prefix.W)
+					{
+						auto src = imm;
+						auto dest = *(UINT64*)ptr;
+						auto temp = src & dest;
+						FLAGS.SF = (temp & 0x8000000000000000) != 0;
+						FLAGS.ZF = (temp == 0);
+						auto byte = (UINT8)temp;
+						byte ^= byte >> 4;
+						byte ^= byte >> 2;
+						byte ^= byte >> 1;
+						FLAGS.PF = (byte & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = imm & 0xFFFF;
+							auto dest = *(UINT16*)ptr;
+							auto temp = src & dest;
+							FLAGS.SF = (temp & 0x8000) != 0;
+							FLAGS.ZF = (temp == 0);
+							auto byte = (UINT8)temp;
+							byte ^= byte >> 4;
+							byte ^= byte >> 2;
+							byte ^= byte >> 1;
+							FLAGS.PF = (byte & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+							RIP += 2;
+							status = true;
+						}
+						else
+						{
+							auto src = imm;
+							auto dest = *(UINT32*)ptr;
+							auto temp = src & dest;
+							FLAGS.SF = (temp & 0x80000000) != 0;
+							FLAGS.ZF = (temp == 0);
+							auto byte = (UINT8)temp;
+							byte ^= byte >> 4;
+							byte ^= byte >> 2;
+							byte ^= byte >> 1;
+							FLAGS.PF = (byte & 1) == 0;
+							FLAGS.CF = 0;
+							FLAGS.OF = 0;
+							RIP += 4;
+							status = true;
+						}
+					}
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_registermemory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+				auto imm = *(UINT32*)(&RIP[2]);
+				if (Prefix.W)
+				{
+					auto src = GPR[modrm_registermemory];
+					auto dest = imm;
 					auto temp = src & dest;
-					FLAGS.SF = (temp & 0x8000) != 0;
+					FLAGS.SF = (temp & 0x8000000000000000) != 0;
 					FLAGS.ZF = (temp == 0);
 					auto byte = (UINT8)temp;
 					byte ^= byte >> 4;
@@ -4234,22 +6548,45 @@ bool AssemblyState::service_test()
 				}
 				else
 				{
-					auto src = *(UINT32*)&GPR[modrm_registermemory];
-					auto dest = imm;
-					auto temp = src & dest;
-					FLAGS.SF = (temp & 0x80000000) != 0;
-					FLAGS.ZF = (temp == 0);
-					auto byte = (UINT8)temp;
-					byte ^= byte >> 4;
-					byte ^= byte >> 2;
-					byte ^= byte >> 1;
-					FLAGS.PF = (byte & 1) == 0;
-					FLAGS.CF = 0;
-					FLAGS.OF = 0;
-					RIP += 6;
-					status = true;
+					if (Prefix.OperandSize)
+					{
+						auto src = *(UINT16*)&GPR[modrm_registermemory];
+						auto dest = imm & 0xFFFF;
+						auto temp = src & dest;
+						FLAGS.SF = (temp & 0x8000) != 0;
+						FLAGS.ZF = (temp == 0);
+						auto byte = (UINT8)temp;
+						byte ^= byte >> 4;
+						byte ^= byte >> 2;
+						byte ^= byte >> 1;
+						FLAGS.PF = (byte & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						auto src = *(UINT32*)&GPR[modrm_registermemory];
+						auto dest = imm;
+						auto temp = src & dest;
+						FLAGS.SF = (temp & 0x80000000) != 0;
+						FLAGS.ZF = (temp == 0);
+						auto byte = (UINT8)temp;
+						byte ^= byte >> 4;
+						byte ^= byte >> 2;
+						byte ^= byte >> 1;
+						FLAGS.PF = (byte & 1) == 0;
+						FLAGS.CF = 0;
+						FLAGS.OF = 0;
+						RIP += 6;
+						status = true;
+					}
 				}
+			}break;
 			}
+
+			
 		}break;
 		};
 	}break;
@@ -4272,17 +6609,44 @@ bool AssemblyState::service_cmp()
 		auto modrm = (MODRM*)(&RIP[1]);
 		switch (modrm->Mode)
 		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+				auto src = *(UINT8*)&GPR[modrm_register];
+				auto dest = *(UINT8*)ptr;
+
+				auto result = dest - src;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = (dest < src);
+				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+
+				status = true;
+			}
+		}break;
 		case EMODE::REG_TO_REG:
 		{
-			auto idx_reg = modrm->RegisterMemory;
-			auto idx_regmem = modrm->Register;
-			if (Prefix.R)
-				idx_reg += 8;
-			if (Prefix.B)
-				idx_regmem += 8;
 
-			auto src = *(UINT8*)&GPR[idx_regmem];
-			auto dest = *(UINT8*)&GPR[idx_reg];
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+
+			auto src = *(UINT8*)&GPR[modrm_register];
+			auto dest = *(UINT8*)&GPR[modrm_register_memory];
 
 			auto result = dest - src;
 
@@ -4713,29 +7077,64 @@ bool AssemblyState::service_cmp()
 		case 7:
 		{
 			auto imm = *(UINT8*)(&RIP[2]);
-			auto idx_reg = modrm->RegisterMemory;
-			if (Prefix.B)
-				idx_reg += 8;
 
-			auto src = imm;
-			auto dest = *(UINT8*)&GPR[idx_reg];
+			switch (modrm->Mode)
+			{
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
+			{
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 
-			auto result = dest - src;
+					auto src = imm;
+					auto dest = *(UINT8*)ptr;
 
-			FLAGS.SF = (result & 0x80) != 0;
-			FLAGS.ZF = (result == 0);
+					auto result = dest - src;
 
-			auto p = (UINT8)result;
-			p ^= p >> 4;
-			p ^= p >> 2;
-			p ^= p >> 1;
+					FLAGS.SF = (result & 0x80) != 0;
+					FLAGS.ZF = (result == 0);
 
-			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
-			FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
 
-			RIP += 3;
-			status = true;
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = (dest < src);
+					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+
+					RIP += 1;
+					status = true;
+				}
+			}break;
+			case EMODE::REG_TO_REG:
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+				auto src = imm;
+				auto dest = *(UINT8*)&GPR[modrm_register];
+
+				auto result = dest - src;
+
+				FLAGS.SF = (result & 0x80) != 0;
+				FLAGS.ZF = (result == 0);
+
+				auto p = (UINT8)result;
+				p ^= p >> 4;
+				p ^= p >> 2;
+				p ^= p >> 1;
+
+				FLAGS.PF = (p & 1) == 0;
+				FLAGS.CF = (dest < src);
+				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80;
+				RIP += 3;
+				status = true;
+			}break;
+			};
 		}break;
 		};
 	}break;
@@ -4747,70 +7146,162 @@ bool AssemblyState::service_cmp()
 		case 7:
 		{
 			auto imm = *(UINT32*)(&RIP[2]);
-			auto idx_reg = modrm->RegisterMemory;
-			if (Prefix.B)
-				idx_reg += 8;
-
-			if (Prefix.W)
+			switch (modrm->Mode)
 			{
-				auto src = (UINT64)(INT64)(INT32)imm;
-				auto dest = GPR[idx_reg];
-
-				auto result = dest - src;
-
-				FLAGS.SF = (result & 0x8000000000000000) != 0;
-				FLAGS.ZF = (result == 0);
-
-				auto p = (UINT8)result;
-				p ^= p >> 4;
-				p ^= p >> 2;
-				p ^= p >> 1;
-
-				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
-				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
-			}
-			else if (Prefix.OperandSize)
+			case EMODE::MEM_0_BIT_DISP:
+			case EMODE::MEM_8_BIT_DISP:
+			case EMODE::MEM_32_BIT_DISP:
 			{
-				auto src = (UINT16)(INT16)(INT32)imm;
-				auto dest = *(UINT16*)&GPR[idx_reg];
+				auto ptr = GetDisplacementPtr();
+				if (ptr)
+				{
+					if (Prefix.W)
+					{
+						auto src = (UINT64)(INT64)(INT32)imm;
+						auto dest = *(UINT64*)ptr;
 
-				auto result = dest - src;
+						auto result = dest - src;
 
-				FLAGS.SF = (result & 0x8000) != 0;
-				FLAGS.ZF = (result == 0);
+						FLAGS.SF = (result & 0x8000000000000000) != 0;
+						FLAGS.ZF = (result == 0);
 
-				auto p = (UINT8)result;
-				p ^= p >> 4;
-				p ^= p >> 2;
-				p ^= p >> 1;
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
 
-				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
-				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
-			}
-			else
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = (dest < src);
+						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)(INT16)(INT32)imm;
+							auto dest = *(UINT16*)ptr;
+
+							auto result = dest - src;
+
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = (dest < src);
+							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+
+							RIP += 2;
+							status = true;
+						}
+						else
+						{
+							auto src = (UINT32)(INT32)imm;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest - src;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = (dest < src);
+							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+
+							RIP += 4;
+							status = true;
+						}
+					}
+				}
+			}break;
+			case EMODE::REG_TO_REG:
 			{
-				auto src = (UINT32)(INT32)imm;
-				auto dest = *(UINT32*)&GPR[idx_reg];
+				if (Prefix.W)
+				{
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+					auto src = (UINT64)(INT64)(INT32)imm;
+					auto dest = *(UINT64*)&GPR[modrm_register_memory];
 
-				auto result = dest - src;
+					auto result = dest - src;
 
-				FLAGS.SF = (result & 0x80000000) != 0;
-				FLAGS.ZF = (result == 0);
+					FLAGS.SF = (result & 0x8000000000000000) != 0;
+					FLAGS.ZF = (result == 0);
 
-				auto p = (UINT8)result;
-				p ^= p >> 4;
-				p ^= p >> 2;
-				p ^= p >> 1;
+					auto p = (UINT8)result;
+					p ^= p >> 4;
+					p ^= p >> 2;
+					p ^= p >> 1;
 
-				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
-				FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
-			}
+					FLAGS.PF = (p & 1) == 0;
+					FLAGS.CF = (dest < src);
+					FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
 
-			RIP += 6;
-			status = true;
+					RIP += 6;
+					status = true;
+				}
+				else
+				{
+					if (Prefix.OperandSize)
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = (UINT16)(INT16)(INT32)imm;
+						auto dest = *(UINT16*)&GPR[modrm_register_memory];
+
+						auto result = dest - src;
+
+						FLAGS.SF = (result & 0x8000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = (dest < src);
+						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+
+						RIP += 4;
+						status = true;
+					}
+					else
+					{
+						auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+						auto src = (UINT32)(INT32)imm;
+						auto dest = *(UINT32*)&GPR[modrm_register_memory];
+
+						auto result = dest - src;
+
+						FLAGS.SF = (result & 0x80000000) != 0;
+						FLAGS.ZF = (result == 0);
+
+						auto p = (UINT8)result;
+						p ^= p >> 4;
+						p ^= p >> 2;
+						p ^= p >> 1;
+
+						FLAGS.PF = (p & 1) == 0;
+						FLAGS.CF = (dest < src);
+						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+
+						RIP += 6;
+						status = true;
+					}
+				}
+			}break;
+			};
 		}break;
 		};
 	}break;
@@ -4851,60 +7342,61 @@ bool AssemblyState::service_cmp()
 						FLAGS.CF = (dest < src);
 						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000000000000000;
 					}
-					else if (Prefix.OperandSize)
-					{
-						auto src = (UINT16)(INT16)imm_byte;
-						auto dest = *(UINT16*)ptr;
-
-						auto result = dest - src;
-
-						FLAGS.SF = (result & 0x8000) != 0;
-						FLAGS.ZF = (result == 0);
-
-						auto p = (UINT8)result;
-						p ^= p >> 4;
-						p ^= p >> 2;
-						p ^= p >> 1;
-
-						FLAGS.PF = (p & 1) == 0;
-						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
-					}
 					else
 					{
-						auto src = (UINT32)(INT32)imm_byte;
-						auto dest = *(UINT32*)ptr;
+						if (Prefix.OperandSize)
+						{
+							auto src = (UINT16)(INT16)imm_byte;
+							auto dest = *(UINT16*)ptr;
 
-						auto result = dest - src;
+							auto result = dest - src;
 
-						FLAGS.SF = (result & 0x80000000) != 0;
-						FLAGS.ZF = (result == 0);
+							FLAGS.SF = (result & 0x8000) != 0;
+							FLAGS.ZF = (result == 0);
 
-						auto p = (UINT8)result;
-						p ^= p >> 4;
-						p ^= p >> 2;
-						p ^= p >> 1;
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
 
-						FLAGS.PF = (p & 1) == 0;
-						FLAGS.CF = (dest < src);
-						FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = (dest < src);
+							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x8000;
+						}
+						else
+						{
+							auto src = (UINT32)(INT32)imm_byte;
+							auto dest = *(UINT32*)ptr;
+
+							auto result = dest - src;
+
+							FLAGS.SF = (result & 0x80000000) != 0;
+							FLAGS.ZF = (result == 0);
+
+							auto p = (UINT8)result;
+							p ^= p >> 4;
+							p ^= p >> 2;
+							p ^= p >> 1;
+
+							FLAGS.PF = (p & 1) == 0;
+							FLAGS.CF = (dest < src);
+							FLAGS.OF = ((dest ^ src) & (dest ^ result)) & 0x80000000;
+						}
 					}
 
-					RIP += 1;
+					RIP++;
 					status = true;
 				}
 			}break;
 			case EMODE::REG_TO_REG:
 			{
 				auto imm_byte = *(INT8*)(&RIP[2]);
-				auto idx_reg = modrm->RegisterMemory;
-				if (Prefix.B)
-					idx_reg += 8;
+				auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 				if (Prefix.W)
 				{
 					auto src = (UINT64)(INT64)imm_byte;
-					auto dest = GPR[idx_reg];
+					auto dest = GPR[modrm_register_memory];
 
 					auto result = dest - src;
 
@@ -4923,7 +7415,7 @@ bool AssemblyState::service_cmp()
 				else if (Prefix.OperandSize)
 				{
 					auto src = (UINT16)(INT16)imm_byte;
-					auto dest = *(UINT16*)&GPR[idx_reg];
+					auto dest = *(UINT16*)&GPR[modrm_register_memory];
 
 					auto result = dest - src;
 
@@ -4942,7 +7434,7 @@ bool AssemblyState::service_cmp()
 				else
 				{
 					auto src = (UINT32)(INT32)imm_byte;
-					auto dest = *(UINT32*)&GPR[idx_reg];
+					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest - src;
 
@@ -5147,15 +7639,71 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_add();
 	}break;
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	{
+		status = service_or();
+	}break;
 	case 0x0F:
 	{
 		switch (RIP[1])
 		{
+		case 0x40:
+		case 0x41:
+		case 0x42:
+		case 0x43:
+		case 0x44:
+		case 0x45:
+		case 0x46:
+		case 0x47:
+		case 0x48:
+		case 0x49:
+		case 0x4A:
+		case 0x4B:
+		case 0x4C:
+		case 0x4D:
+		case 0x4E:
+		case 0x4F:
+		{
+			status = service_mov();
+		}break;
+		case 0x80:
+		case 0x81:
+		case 0x82:
+		case 0x83:
+		case 0x84:
+		case 0x85:
+		case 0x86:
+		case 0x87:
+		case 0x88:
+		case 0x89:
+		case 0x8A:
+		case 0x8B:
+		case 0x8C:
+		case 0x8D:
+		case 0x8E:
+		case 0x8F:
+		{
+			status = service_jmp();
+		}break;
 		case 0xB6:
 		{
 			status = service_mov();
 		}break;
 		}
+	}break;
+	case 0x20:
+	case 0x21:
+	case 0x22:
+	case 0x23:
+	case 0x24:
+	case 0x25:
+	{
+		status = service_and();
 	}break;
 	case 0x28:
 	case 0x29:
@@ -5223,6 +7771,14 @@ bool AssemblyState::decode_mnemonic()
 		{
 			status = service_add();
 		}break;
+		case 1:
+		{
+			status = service_or();
+		}break;
+		case 4:
+		{
+			status = service_and();
+		}break;
 		case 5:
 		{
 			status = service_sub();
@@ -5246,6 +7802,14 @@ bool AssemblyState::decode_mnemonic()
 		{
 			status = service_add();
 		}break;
+		case 1:
+		{
+			status = service_or();
+		}break;
+		case 4:
+		{
+			status = service_and();
+		}break;
 		case 5:
 		{
 			status = service_sub();
@@ -5268,6 +7832,14 @@ bool AssemblyState::decode_mnemonic()
 		case 0:
 		{
 			status = service_add();
+		}break;
+		case 1:
+		{
+			status = service_or();
+		}break;
+		case 4:
+		{
+			status = service_and();
 		}break;
 		case 5:
 		{
@@ -5472,7 +8044,7 @@ int main()
 {
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
-	engine->SetRip((PVOID)main);
+	engine->SetRip((PVOID)test);
 	//auto code = "\x83\x3D\x76\x01\x00\x00\x00\x83\x3D\x17\x00\x00\x00\x00\x83\x7C\x24\x16\x00\x83\x3C\x24\x00\x83\x3C\xC4\x00\x83\x7D\x00\x00\x83\x3B\x00\x83\x38\x00\x83\xBC\x24\x76\x01\x00\x00\x00\x83\xB8\x76\x01\x00\x00\x00\x83\xBC\x04\x76\x01\x00\x00\x00\x83\xBC\xDC\x76\x01\x00\x00\x00";
 	//engine->SetRip((PVOID)code);
 	int counter = 0;
