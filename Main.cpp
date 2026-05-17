@@ -119,8 +119,13 @@ private:
 public:
 	void SetRip(PVOID rip);
 	UINT64 GetRip();
+
 	void SetGPR(int index, UINT64 value);
 	UINT64 GetGPR(int index);
+
+	void SetGsBase(UINT64 value) { GsBase = value; }
+	void SetFsBase(UINT64 value) { FsBase = value; }
+
 	bool step();
 };
 
@@ -141,18 +146,38 @@ UINT64 AssemblyState::GetDisplacementPtr()
 
 			if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
 			{
-				auto imm = *(INT32*)(&RIP[3]);
-				auto ptr = GPR[modrm2_register] * mutiplier + imm;
+				
 
-				if (Prefix.GS)
-					ptr += GsBase;
-				else if (Prefix.FS)
-					ptr += FsBase;
+				if (modrm2->Register == (int)EGPR::RSP)
+				{
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = (UINT64)imm;
 
-				//printf("[%x + r%i * %i]\n", imm, modrm2_register, mutiplier);
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
 
-				RIP += 7;
-				return ptr;
+					//printf("[%x]\n", imm);
+
+					RIP += 7;
+					return ptr;
+				}
+				else
+				{
+					auto imm = *(INT32*)(&RIP[3]);
+					auto ptr = GPR[modrm2_register] * mutiplier + imm;
+
+					if (Prefix.GS)
+						ptr += GsBase;
+					else if (Prefix.FS)
+						ptr += FsBase;
+
+					printf("[%x + r%i * %i]\n", imm, modrm2_register, mutiplier);
+
+					RIP += 7;
+					return ptr;
+				}
 			}
 			else if (modrm2->RegisterMemory == (BYTE)EGPR::RSP)
 			{
@@ -8569,7 +8594,7 @@ bool AssemblyState::service_shr()
 			}
 
 			status = true;
-			RIP++;
+			RIP += 2;
 		}break;
 		};
 	}break;
@@ -9104,7 +9129,7 @@ bool AssemblyState::service_shl()
 			}
 
 			status = true;
-			RIP++;
+			RIP += 2;
 		}break;
 		};
 	}break;
@@ -11293,10 +11318,19 @@ void test()
 	return;
 }
 
+UINT64 __attribute__((naked)) __readgsbase()
+{
+	__asm {
+		mov rax, gs:[0x30]
+		ret
+	}
+}
+
 int main()
 {
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
+	engine->SetGsBase(__readgsbase());
 	auto start_rsp = engine->GetGPR((int)EGPR::RSP);
 	engine->SetRip((PVOID)main);
 
@@ -11324,6 +11358,8 @@ int main()
 			printf("%02X ", ((UINT8*)engine->GetRip())[i]);
 		printf("\n\n");
 		counter++;
+
+		
 	}
 	
 	printf("Executed %d instructions\n", counter);
