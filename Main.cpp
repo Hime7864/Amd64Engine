@@ -118,7 +118,9 @@ private:
 	bool decode_mnemonic();
 public:
 	void SetRip(PVOID rip);
+	UINT64 GetRip();
 	void SetGPR(int index, UINT64 value);
+	UINT64 GetGPR(int index);
 	bool step();
 };
 
@@ -134,7 +136,7 @@ UINT64 AssemblyState::GetDisplacementPtr()
 			auto modrm2 = (MODRM*)(&RIP[2]);
 			auto mutiplier = 1ull << (BYTE)modrm2->Mode;
 			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
-			auto modrm2_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+			auto modrm2_register_memory = Prefix.B ? modrm2->RegisterMemory + 8 : modrm2->RegisterMemory;
 			auto modrm2_register = Prefix.X ? modrm2->Register + 8 : modrm2->Register;
 
 			if (modrm2->RegisterMemory == (BYTE)EGPR::RBP)
@@ -186,15 +188,14 @@ UINT64 AssemblyState::GetDisplacementPtr()
 			}
 			else
 			{
-				auto ptr = GPR[modrm_register] + GPR[modrm2_register] * mutiplier;
+				auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier;
 
 				if (Prefix.GS)
 					ptr += GsBase;
 				else if (Prefix.FS)
 					ptr += FsBase;
 
-				//printf("[r%i + r%i * %i]\n", modrm->Register, modrm2->Register, mutiplier);
-
+				//printf("[r%i + r%i * %i]\n", modrm2_register_memory, modrm2_register, mutiplier);
 				RIP += 3;
 				return ptr;
 			}
@@ -413,6 +414,16 @@ void AssemblyState::SetRip(PVOID rip)
 	return;
 }
 
+UINT64 AssemblyState::GetRip()
+{
+	return (UINT64)RIP;
+}
+
+UINT64 AssemblyState::GetGPR(int index)
+{
+	return GPR[index % 16];
+}
+
 void AssemblyState::SetGPR(int index, UINT64 value)
 {
 	GPR[index % 16] = value;
@@ -506,6 +517,7 @@ bool AssemblyState::service_mov()
 							}
 							else
 							{
+								GPR[modrm_register] = 0;
 								*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
 							}
 						}
@@ -531,6 +543,7 @@ bool AssemblyState::service_mov()
 						}
 						else
 						{
+							GPR[modrm_register] = 0;
 							*(UINT32*)&GPR[modrm_register] = *(UINT32*)&GPR[modrm_register_memory];
 						}
 					}
@@ -563,6 +576,7 @@ bool AssemblyState::service_mov()
 						}
 						else
 						{
+							GPR[modrm_register] = 0;
 							*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)ptr) & 0xFFull;
 						}
 					}
@@ -584,6 +598,7 @@ bool AssemblyState::service_mov()
 						}
 						else
 						{
+							GPR[modrm_register] = 0;
 							*(UINT32*)&GPR[modrm_register] = ((UINT64) * (BYTE*)&GPR[modrm_register_memory]) & 0xFFull;
 						}
 					}
@@ -665,6 +680,7 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
+				GPR[modrm_register_memory] = 0;
 				*(UINT32*)&GPR[modrm_register_memory] = *(UINT32*)&GPR[modrm_register];
 			}
 			RIP += 2;
@@ -728,6 +744,7 @@ bool AssemblyState::service_mov()
 					}
 					else
 					{
+						GPR[modrm_register] = 0;
 						*(UINT32*)&GPR[modrm_register] = *(UINT32*)ptr;
 					}
 				}
@@ -750,6 +767,7 @@ bool AssemblyState::service_mov()
 				}
 				else
 				{
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = *(UINT32*)&GPR[modrm_register_memory];
 				}
 			}
@@ -807,6 +825,7 @@ bool AssemblyState::service_mov()
 			}
 			else
 			{
+				GPR[(BYTE)EGPR::RAX] = 0;
 				*(UINT32*)&GPR[(BYTE)EGPR::RAX] = (UINT32)moffs;
 			}
 		}
@@ -1004,6 +1023,7 @@ bool AssemblyState::service_mov()
 				}
 				else
 				{
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = imm;
 				}
 			}
@@ -1046,6 +1066,7 @@ bool AssemblyState::service_lea()
 				}
 				else
 				{
+					GPR[modrm_register] = 0;
 					*(DWORD*)&GPR[modrm_register] = (DWORD)ptr;
 				}
 			}
@@ -1774,6 +1795,7 @@ bool AssemblyState::service_sub()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest - src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -1919,6 +1941,7 @@ bool AssemblyState::service_sub()
 						auto dest = *(UINT32*)&GPR[modrm_register];
 
 						auto result = dest - src;
+						GPR[modrm_register] = 0;
 						*(UINT32*)&GPR[modrm_register] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -1988,6 +2011,7 @@ bool AssemblyState::service_sub()
 					auto src = *(UINT32*)&GPR[modrm_register_memory];
 					auto dest = *(UINT32*)&GPR[modrm_register];
 					auto result = dest - src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -2062,6 +2086,7 @@ bool AssemblyState::service_sub()
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
 			auto result = dest - src;
+			GPR[(int)EGPR::RAX] = 0;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -2301,6 +2326,7 @@ bool AssemblyState::service_sub()
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 						auto result = dest - src;
+						GPR[modrm_register_memory] = 0;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -2461,6 +2487,7 @@ bool AssemblyState::service_sub()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest - src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -2696,6 +2723,7 @@ bool AssemblyState::service_add()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest - src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -2841,6 +2869,7 @@ bool AssemblyState::service_add()
 						auto dest = *(UINT32*)&GPR[modrm_register];
 
 						auto result = dest + src;
+						GPR[modrm_register] = 0;
 						*(UINT32*)&GPR[modrm_register] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -2915,6 +2944,7 @@ bool AssemblyState::service_add()
 					auto dest = *(UINT32*)&GPR[modrm_register];
 
 					auto result = dest + src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -2992,6 +3022,7 @@ bool AssemblyState::service_add()
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
 			auto result = dest + src;
+			GPR[(int)EGPR::RAX] = 0;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -3231,6 +3262,7 @@ bool AssemblyState::service_add()
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 						auto result = dest + src;
+						GPR[modrm_register_memory] = 0;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -3391,6 +3423,7 @@ bool AssemblyState::service_add()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest + src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -3620,6 +3653,7 @@ bool AssemblyState::service_xor()
 					auto src = *(UINT32*)&GPR[modrm_register];
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 					auto result = dest ^ src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -3761,6 +3795,7 @@ bool AssemblyState::service_xor()
 					auto dest = *(UINT32*)&GPR[modrm_register];
 
 					auto result = dest ^ src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -3828,6 +3863,7 @@ bool AssemblyState::service_xor()
 					auto src = *(UINT32*)&GPR[modrm_register_memory];
 					auto dest = *(UINT32*)&GPR[modrm_register];
 					auto result = dest ^ src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -3902,6 +3938,7 @@ bool AssemblyState::service_xor()
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
 			auto result = dest ^ src;
+			GPR[(int)EGPR::RAX] = 0;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -4141,6 +4178,7 @@ bool AssemblyState::service_xor()
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 						auto result = dest ^ src;
+						GPR[modrm_register_memory] = 0;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -4301,6 +4339,7 @@ bool AssemblyState::service_xor()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest ^ src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -4530,6 +4569,7 @@ bool AssemblyState::service_or()
 					auto src = *(UINT32*)&GPR[modrm_register];
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 					auto result = dest | src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -4671,6 +4711,7 @@ bool AssemblyState::service_or()
 					auto dest = *(UINT32*)&GPR[modrm_register];
 
 					auto result = dest | src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -4738,6 +4779,7 @@ bool AssemblyState::service_or()
 					auto src = *(UINT32*)&GPR[modrm_register_memory];
 					auto dest = *(UINT32*)&GPR[modrm_register];
 					auto result = dest | src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -4812,6 +4854,7 @@ bool AssemblyState::service_or()
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
 			auto result = dest | src;
+			GPR[(int)EGPR::RAX] = 0;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -5051,6 +5094,7 @@ bool AssemblyState::service_or()
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 						auto result = dest | src;
+						GPR[modrm_register_memory] = 0;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -5211,6 +5255,7 @@ bool AssemblyState::service_or()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest | src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -5440,6 +5485,7 @@ bool AssemblyState::service_and()
 					auto src = *(UINT32*)&GPR[modrm_register];
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 					auto result = dest & src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -5581,6 +5627,7 @@ bool AssemblyState::service_and()
 					auto dest = *(UINT32*)&GPR[modrm_register];
 
 					auto result = dest | src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -5648,6 +5695,7 @@ bool AssemblyState::service_and()
 					auto src = *(UINT32*)&GPR[modrm_register_memory];
 					auto dest = *(UINT32*)&GPR[modrm_register];
 					auto result = dest & src;
+					GPR[modrm_register] = 0;
 					*(UINT32*)&GPR[modrm_register] = result;
 					FLAGS.SF = (result & 0x80000000) != 0;
 					FLAGS.ZF = (result == 0);
@@ -5722,6 +5770,7 @@ bool AssemblyState::service_and()
 			auto dest = *(UINT32*)&GPR[(int)EGPR::RAX];
 
 			auto result = dest & src;
+			GPR[(int)EGPR::RAX] = 0;
 			*(UINT32*)&GPR[(int)EGPR::RAX] = result;
 
 			FLAGS.SF = (result & 0x80000000) != 0;
@@ -5961,6 +6010,7 @@ bool AssemblyState::service_and()
 						auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 						auto result = dest & src;
+						GPR[modrm_register_memory] = 0;
 						*(UINT32*)&GPR[modrm_register_memory] = result;
 
 						FLAGS.SF = (result & 0x80000000) != 0;
@@ -6121,6 +6171,7 @@ bool AssemblyState::service_and()
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
 
 					auto result = dest & src;
+					GPR[modrm_register_memory] = 0;
 					*(UINT32*)&GPR[modrm_register_memory] = result;
 
 					FLAGS.SF = (result & 0x80000000) != 0;
@@ -6170,7 +6221,20 @@ bool AssemblyState::service_rol()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (8 - masked));
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6178,8 +6242,20 @@ bool AssemblyState::service_rol()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = RIP[2];
+			UINT8 count = RIP[2];
+			UINT8 masked = count & 7;
 
+			if (masked)
+			{
+				auto result = (dest << masked) | (dest >> (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			RIP += 3;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6198,21 +6274,56 @@ bool AssemblyState::service_rol()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (64 - masked));
+						*(UINT64*)ptr = result;
+
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (16 - masked));
+							*(UINT16*)ptr = result;
+
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (32 - masked));
+							*(UINT32*)ptr = result;
+
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6222,21 +6333,58 @@ bool AssemblyState::service_rol()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+			RIP += 3;
+			status = true;
+
 		}break;
 		};
 	}break;
@@ -6253,7 +6401,20 @@ bool AssemblyState::service_rol()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (8 - masked));
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6261,7 +6422,20 @@ bool AssemblyState::service_rol()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = 1;
+			UINT8 count = 1;
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (dest << masked) | (dest >> (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6280,19 +6454,49 @@ bool AssemblyState::service_rol()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (64 - masked));
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (16 - masked));
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (32 - masked));
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
 			}
@@ -6304,21 +6508,54 @@ bool AssemblyState::service_rol()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6335,7 +6572,18 @@ bool AssemblyState::service_rol()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (8 - masked));
+					*(UINT8*)ptr = result;
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6343,7 +6591,19 @@ bool AssemblyState::service_rol()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (dest << masked) | (dest >> (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break; 
@@ -6362,21 +6622,52 @@ bool AssemblyState::service_rol()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (64 - masked));
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (16 - masked));
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest << masked) | (dest >> (32 - masked));
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6386,25 +6677,62 @@ bool AssemblyState::service_rol()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest << masked) | (dest >> (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest << masked) | (dest >> (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
 	}
+
+	if(status)
+		printf("ROL");
 
 	return status;
 }
@@ -6428,7 +6756,20 @@ bool AssemblyState::service_ror()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (8 - masked));
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6436,8 +6777,20 @@ bool AssemblyState::service_ror()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = RIP[2];
+			UINT8 count = RIP[2];
+			UINT8 masked = count & 7;
 
+			if (masked)
+			{
+				auto result = (dest >> masked) | (dest << (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			RIP += 3;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6456,21 +6809,56 @@ bool AssemblyState::service_ror()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (64 - masked));
+						*(UINT64*)ptr = result;
+
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (16 - masked));
+							*(UINT16*)ptr = result;
+
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (32 - masked));
+							*(UINT32*)ptr = result;
+
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6480,21 +6868,58 @@ bool AssemblyState::service_ror()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+			RIP += 3;
+			status = true;
+
 		}break;
 		};
 	}break;
@@ -6511,7 +6936,20 @@ bool AssemblyState::service_ror()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (8 - masked));
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6519,7 +6957,20 @@ bool AssemblyState::service_ror()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = 1;
+			UINT8 count = 1;
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (dest >> masked) | (dest << (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6538,19 +6989,49 @@ bool AssemblyState::service_ror()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (64 - masked));
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (16 - masked));
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (32 - masked));
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
 			}
@@ -6562,21 +7043,54 @@ bool AssemblyState::service_ror()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -6593,7 +7107,18 @@ bool AssemblyState::service_ror()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (8 - masked));
+					*(UINT8*)ptr = result;
+					FLAGS.CF = (result >> 7) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6601,7 +7126,19 @@ bool AssemblyState::service_ror()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (dest >> masked) | (dest << (8 - masked));
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+				FLAGS.CF = (result >> 7) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+			}
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
@@ -6620,21 +7157,52 @@ bool AssemblyState::service_ror()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (64 - masked));
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (result >> 63) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (16 - masked));
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (result >> 15) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = (dest >> masked) | (dest << (32 - masked));
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (result >> 31) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+						}
 					}
 				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -6644,25 +7212,62 @@ bool AssemblyState::service_ror()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = (dest >> masked) | (dest << (64 - masked));
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (result >> 63) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((result >> 62) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (16 - masked));
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 15) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((result >> 14) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = (dest >> masked) | (dest << (32 - masked));
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (result >> 31) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((result >> 30) & 1);
+					}
 				}
 			}
+
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
 	}
+
+	if (status)
+		printf("ROR");
 
 	return status;
 }
@@ -7460,7 +8065,20 @@ bool AssemblyState::service_shr()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest >> masked);
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7468,8 +8086,20 @@ bool AssemblyState::service_shr()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = RIP[2];
+			UINT8 count = RIP[2];
+			UINT8 masked = count & 7;
 
+			if (masked)
+			{
+				auto result = (UINT8)(dest >> masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (dest >> (masked - 1)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			RIP += 3;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7488,21 +8118,56 @@ bool AssemblyState::service_shr()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						*(UINT64*)ptr = result;
+
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest >> masked);
+							*(UINT16*)ptr = result;
+
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest >> masked;
+							*(UINT32*)ptr = result;
+
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7512,21 +8177,58 @@ bool AssemblyState::service_shr()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest >> masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest >> masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+			RIP += 3;
+			status = true;
+
 		}break;
 		};
 	}break;
@@ -7543,7 +8245,20 @@ bool AssemblyState::service_shr()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest >> masked);
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7551,7 +8266,20 @@ bool AssemblyState::service_shr()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = 1;
+			UINT8 count = 1;
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (UINT8)(dest >> masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (dest >> (masked - 1)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7570,19 +8298,49 @@ bool AssemblyState::service_shr()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest >> masked);
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest >> masked;
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
 			}
@@ -7594,21 +8352,54 @@ bool AssemblyState::service_shr()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest >> masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest >> masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7625,7 +8416,18 @@ bool AssemblyState::service_shr()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest >> masked);
+					*(UINT8*)ptr = result;
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7633,7 +8435,19 @@ bool AssemblyState::service_shr()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (UINT8)(dest >> masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+				FLAGS.CF = (dest >> (masked - 1)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
@@ -7652,21 +8466,52 @@ bool AssemblyState::service_shr()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest >> masked);
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest >> masked;
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (dest >> (masked - 1)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7676,25 +8521,62 @@ bool AssemblyState::service_shr()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest >> masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (dest >> (masked - 1)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest >> masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest >> masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (masked - 1)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
 	}
+
+	if (status)
+		printf("SHR");
 
 	return status;
 }
@@ -7718,7 +8600,20 @@ bool AssemblyState::service_shl()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest << masked);
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (dest >> (8 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7726,8 +8621,20 @@ bool AssemblyState::service_shl()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = RIP[2];
+			UINT8 count = RIP[2];
+			UINT8 masked = count & 7;
 
+			if (masked)
+			{
+				auto result = (UINT8)(dest << masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (dest >> (8 - masked)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			RIP += 3;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7746,21 +8653,56 @@ bool AssemblyState::service_shl()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						*(UINT64*)ptr = result;
+
+						FLAGS.CF = (dest >> (64 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest << masked);
+							*(UINT16*)ptr = result;
+
+							FLAGS.CF = (dest >> (64 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = RIP[2];
+						UINT8 count = RIP[2];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest << masked;
+							*(UINT32*)ptr = result;
+
+							FLAGS.CF = (dest >> (16 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7770,21 +8712,58 @@ bool AssemblyState::service_shl()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = RIP[2];
+				UINT8 count = RIP[2];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest << masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest << masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = RIP[2];
+					UINT8 count = RIP[2];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+			RIP += 3;
+			status = true;
+
 		}break;
 		};
 	}break;
@@ -7801,7 +8780,20 @@ bool AssemblyState::service_shl()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest << masked);
+					*(UINT8*)ptr = result;
+
+					FLAGS.CF = (dest >> (8 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				RIP++;
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7809,7 +8801,20 @@ bool AssemblyState::service_shl()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = 1;
+			UINT8 count = 1;
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (UINT8)(dest << masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+
+				FLAGS.CF = (dest >> (8 - masked)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7828,19 +8833,49 @@ bool AssemblyState::service_shl()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (dest >> (64 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest << masked);
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (dest >> (64 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = 1;
+						UINT8 count = 1;
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest << masked;
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (dest >> (16 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
 			}
@@ -7852,21 +8887,54 @@ bool AssemblyState::service_shl()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = 1;
+				UINT8 count = 1;
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest << masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest << masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = 1;
+					UINT8 count = 1;
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+			RIP++;
+			status = true;
 		}break;
 		};
 	}break;
@@ -7883,7 +8951,18 @@ bool AssemblyState::service_shl()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 7;
+
+				if (masked)
+				{
+					auto result = (UINT8)(dest << masked);
+					*(UINT8*)ptr = result;
+					FLAGS.CF = (dest >> (8 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7891,7 +8970,19 @@ bool AssemblyState::service_shl()
 			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
 
 			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 masked = count & 7;
+
+			if (masked)
+			{
+				auto result = (UINT8)(dest << masked);
+				*(UINT8*)&GPR[modrm_register_memory] = result;
+				FLAGS.CF = (dest >> (8 - masked)) & 1;
+				if (masked == 1)
+					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
+			}
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
@@ -7910,21 +9001,52 @@ bool AssemblyState::service_shl()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 63;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						*(UINT64*)ptr = result;
+						FLAGS.CF = (dest >> (64 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+					}
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 15;
+
+						if (masked)
+						{
+							auto result = (UINT16)(dest << masked);
+							*(UINT16*)ptr = result;
+							FLAGS.CF = (dest >> (64 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+						}
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+						UINT8 masked = count & 31;
+
+						if (masked)
+						{
+							auto result = dest << masked;
+							*(UINT32*)ptr = result;
+							FLAGS.CF = (dest >> (16 - masked)) & 1;
+							if (masked == 1)
+								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+						}
 					}
 				}
+				status = true;
 			}
 		}break;
 		case EMODE::REG_TO_REG:
@@ -7934,25 +9056,62 @@ bool AssemblyState::service_shl()
 			if (Prefix.W)
 			{
 				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 63;
+
+				if (masked)
+				{
+					auto result = dest << masked;
+					*(UINT64*)&GPR[modrm_register_memory] = result;
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
+				}
 			}
 			else
 			{
 				if (Prefix.OperandSize)
 				{
 					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 15;
+
+					if (masked)
+					{
+						auto result = (UINT16)(dest << masked);
+						*(UINT16*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+					}
 				}
 				else
 				{
 					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+					UINT8 masked = count & 31;
+
+					if (masked)
+					{
+						auto result = dest << masked;
+						GPR[modrm_register_memory] = 0;
+						*(UINT32*)&GPR[modrm_register_memory] = result;
+						FLAGS.CF = (dest >> (32 - masked)) & 1;
+						if (masked == 1)
+							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
+					}
 				}
 			}
+
+			status = true;
+			RIP++;
 		}break;
 		};
 	}break;
 	}
+
+	if (status)
+		printf("SHL");
 
 	return status;
 }
@@ -10138,12 +11297,35 @@ int main()
 {
 	auto engine = new AssemblyState();
 	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
+	auto start_rsp = engine->GetGPR((int)EGPR::RSP);
 	engine->SetRip((PVOID)main);
+
 	int counter = 0;
 	while (engine->step())
 	{
+		printf("RAX : %p ", engine->GetGPR((int)EGPR::RAX));
+		printf("RBX : %p ", engine->GetGPR((int)EGPR::RBX));
+		printf("RCX : %p ", engine->GetGPR((int)EGPR::RCX));
+		printf("RDX : %p \n", engine->GetGPR((int)EGPR::RDX));
+		printf("RSP : %p ", engine->GetGPR((int)EGPR::RSP));
+		printf("RBP : %p ", engine->GetGPR((int)EGPR::RBP));
+		printf("RSI : %p ", engine->GetGPR((int)EGPR::RSI));
+		printf("RDI : %p \n", engine->GetGPR((int)EGPR::RDI));
+		printf("R8  : %p ", engine->GetGPR((int)EGPR::R8));
+		printf("R9  : %p ", engine->GetGPR((int)EGPR::R9));
+		printf("R10 : %p ", engine->GetGPR((int)EGPR::R10));
+		printf("R11 : %p \n", engine->GetGPR((int)EGPR::R11));
+		printf("R12 : %p ", engine->GetGPR((int)EGPR::R12));
+		printf("R13 : %p ", engine->GetGPR((int)EGPR::R13));
+		printf("R14 : %p ", engine->GetGPR((int)EGPR::R14));
+		printf("R15 : %p \n", engine->GetGPR((int)EGPR::R15));
+		printf("idx : %d instructions\nNEXT: ", counter);
+		for(int i=0;i<10;i++)
+			printf("%02X ", ((UINT8*)engine->GetRip())[i]);
+		printf("\n\n");
 		counter++;
 	}
+	
 	printf("Executed %d instructions\n", counter);
 
 	return 0;
