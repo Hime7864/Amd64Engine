@@ -9,6 +9,12 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{a1b2c3d4-e5f6-7890-abcd-ef1234567890}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Services">
+      <UniqueIdentifier>{b2c3d4e5-f6a7-8901-bcde-f12345678901}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -18,5 +24,94 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Engine.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Engine\Services\add.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\and.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\btr.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\call.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\cmp.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\dec.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\inc.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\jmp.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\lea.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\mov.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\or.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\pop.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\push.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\rcl.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\rcr.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\ret.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\rol.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\ror.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\sal.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\sar.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\shl.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\shr.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\stosd.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\sub.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\syscall.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\test.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\xor.hpp">
+      <Filter>Engine\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\decode.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

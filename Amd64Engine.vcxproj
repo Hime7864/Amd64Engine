@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,6 +91,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -102,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -116,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,7 +127,38 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Engine.cpp" />
     <ClCompile Include="Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Engine\Services\add.hpp" />
+    <ClInclude Include="Engine\Services\and.hpp" />
+    <ClInclude Include="Engine\Services\btr.hpp" />
+    <ClInclude Include="Engine\Services\call.hpp" />
+    <ClInclude Include="Engine\Services\cmp.hpp" />
+    <ClInclude Include="Engine\Services\dec.hpp" />
+    <ClInclude Include="Engine\Services\decode.hpp" />
+    <ClInclude Include="Engine\Services\inc.hpp" />
+    <ClInclude Include="Engine\Services\jmp.hpp" />
+    <ClInclude Include="Engine\Services\lea.hpp" />
+    <ClInclude Include="Engine\Services\mov.hpp" />
+    <ClInclude Include="Engine\Services\or.hpp" />
+    <ClInclude Include="Engine\Services\pop.hpp" />
+    <ClInclude Include="Engine\Services\push.hpp" />
+    <ClInclude Include="Engine\Services\rcl.hpp" />
+    <ClInclude Include="Engine\Services\rcr.hpp" />
+    <ClInclude Include="Engine\Services\ret.hpp" />
+    <ClInclude Include="Engine\Services\rol.hpp" />
+    <ClInclude Include="Engine\Services\ror.hpp" />
+    <ClInclude Include="Engine\Services\sal.hpp" />
+    <ClInclude Include="Engine\Services\sar.hpp" />
+    <ClInclude Include="Engine\Services\shl.hpp" />
+    <ClInclude Include="Engine\Services\shr.hpp" />
+    <ClInclude Include="Engine\Services\stosd.hpp" />
+    <ClInclude Include="Engine\Services\sub.hpp" />
+    <ClInclude Include="Engine\Services\syscall.hpp" />
+    <ClInclude Include="Engine\Services\test.hpp" />
+    <ClInclude Include="Engine\Services\xor.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
