@@ -35,9 +35,6 @@
     <ClInclude Include="Engine\Services\and.hpp">
       <Filter>Engine\Services</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Services\btr.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Services\call.hpp">
       <Filter>Engine\Services</Filter>
     </ClInclude>
@@ -112,6 +109,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Services\decode.hpp">
       <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Engine.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\structures.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\bt.hpp">
+      <Filter>Engine\Services</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

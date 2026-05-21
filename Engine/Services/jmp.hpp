@@ -378,7 +378,7 @@ bool AssemblyState::service_jmp()
 	};
 
 	if (status)
-		printf("JUMP");
+		printf("Jump");
 
 	return status;
 }

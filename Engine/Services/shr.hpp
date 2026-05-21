@@ -530,7 +530,7 @@ bool AssemblyState::service_shr()
 	}
 
 	if (status)
-		printf("SHR");
+		printf("Shift Right");
 
 	return status;
 }

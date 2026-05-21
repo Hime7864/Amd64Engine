@@ -42,7 +42,7 @@ bool AssemblyState::service_call()
 	
 
 	if (status)
-		printf("CALL");
+		printf("Call");
 
 	return status;
 }

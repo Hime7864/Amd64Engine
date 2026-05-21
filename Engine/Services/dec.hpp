@@ -191,6 +191,9 @@ bool AssemblyState::service_dec()
 	}break;
 	};
 
+	if (status)
+		printf("Decrease");
+
 	return status;
 }
 

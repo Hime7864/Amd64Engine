@@ -255,6 +255,9 @@ bool AssemblyState::service_rcr()
 	}break;
 	}
 
+	if (status)
+		printf("Rotate Carry Right");
+
 	return status;
 }
 

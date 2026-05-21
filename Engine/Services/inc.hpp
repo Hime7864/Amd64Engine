@@ -196,6 +196,9 @@ bool AssemblyState::service_inc()
 	}break;
 	};
 
+	if(status)
+		printf("Increase");
+
 	return status;
 }
 

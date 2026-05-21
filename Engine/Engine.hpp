@@ -5,6 +5,7 @@ class AssemblyState
 {
 private:
 	UINT64 GPR[16];
+	XMMWORD XMM[16];
 	UINT64 Advancement;
 	BYTE* RIP;
 	EFLAGS FLAGS;
@@ -59,8 +60,7 @@ private:
 	//special operations
 
 	bool service_stosd();
-	bool service_btr();
-
+	bool service_bt();
 	// decoder
 
 	bool decode_mnemonic();

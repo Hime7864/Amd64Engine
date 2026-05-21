@@ -911,7 +911,7 @@ bool AssemblyState::service_or()
 	};
 
 	if (status)
-		printf("OR");
+		printf("Or");
 
 	return status;
 }

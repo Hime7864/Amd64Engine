@@ -254,6 +254,9 @@ bool AssemblyState::service_sal()
 		};
 	}break;
 	}
+	
+	if(status)
+		printf("Shift Arithmetic Left");
 
 	return status;
 }

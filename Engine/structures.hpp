@@ -2,6 +2,22 @@
 
 #include <Windows.h>
 
+struct XMMWORD
+{
+	union {
+		struct { UINT64 data[2]; }u64;
+		struct { INT64 data[2]; }s64;
+		struct { UINT32 data[4]; }u32;
+		struct { INT32 data[4]; }s32;
+		struct { UINT16 data[8]; }u16;
+		struct { INT16 data[8];}s16;
+		struct { UINT8 data[16]; }u8;
+		struct { INT8 data[16]; }s8;
+		struct { double data[2]; }f64;
+		struct { float data[4]; }f32;
+	};
+};
+
 struct EFLAGS
 {
 	BYTE CF : 1;
@@ -69,4 +85,5 @@ struct MNEMONICPREFIX
 	INT16 OperandSize : 1;
 	INT16 AddressSize : 1;
 	INT16 Repeated : 1;
+	INT16 RepeatedNE : 1;
 };

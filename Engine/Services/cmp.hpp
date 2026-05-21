@@ -863,7 +863,7 @@ bool AssemblyState::service_cmp()
 	}
 
 	if (status)
-		printf("CMP");
+		printf("Compare");
 
 	return status;
 }

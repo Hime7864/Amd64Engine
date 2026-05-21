@@ -5,8 +5,8 @@
 
 void test()
 {
+	//return VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	printf("Hello world\n");
-	return;
 }
 
 UINT64 __attribute__((naked)) __readgsbase()
@@ -28,23 +28,23 @@ int main()
 	int counter = 0;
 	while (engine->step())
 	{
-		printf("%p(RAX) ", engine->GetGPR((int)EGPR::RAX));
-		printf("%p(RCX) ", engine->GetGPR((int)EGPR::RCX));
-		printf("%p(RDX) ", engine->GetGPR((int)EGPR::RDX));
-		printf("%p(RBX) \n", engine->GetGPR((int)EGPR::RBX));
-		printf("%p(RSP) ", engine->GetGPR((int)EGPR::RSP));
-		printf("%p(RBP) ", engine->GetGPR((int)EGPR::RBP));
-		printf("%p(RSI) ", engine->GetGPR((int)EGPR::RSI));
-		printf("%p(RDI) \n", engine->GetGPR((int)EGPR::RDI));
-		printf("%p( R8) ", engine->GetGPR((int)EGPR::R8));
-		printf("%p( R9) ", engine->GetGPR((int)EGPR::R9));
-		printf("%p(R10) ", engine->GetGPR((int)EGPR::R10));
-		printf("%p(R11) \n", engine->GetGPR((int)EGPR::R11));
-		printf("%p(R12) ", engine->GetGPR((int)EGPR::R12));
-		printf("%p(R13) ", engine->GetGPR((int)EGPR::R13));
-		printf("%p(R14) ", engine->GetGPR((int)EGPR::R14));
-		printf("%p(R15) \n", engine->GetGPR((int)EGPR::R15));
-		printf("idx : %d instructions\nNEXT: ", counter);
+		printf("RAX %p ", engine->GetGPR((int)EGPR::RAX));
+		printf("RCX %p ", engine->GetGPR((int)EGPR::RCX));
+		printf("RDX %p ", engine->GetGPR((int)EGPR::RDX));
+		printf("RBX %p \n", engine->GetGPR((int)EGPR::RBX));
+		printf("RSP %p ", engine->GetGPR((int)EGPR::RSP));
+		printf("RBP %p ", engine->GetGPR((int)EGPR::RBP));
+		printf("RSI %p ", engine->GetGPR((int)EGPR::RSI));
+		printf("RDI %p \n", engine->GetGPR((int)EGPR::RDI));
+		printf("R8  %p ", engine->GetGPR((int)EGPR::R8));
+		printf("R9  %p ", engine->GetGPR((int)EGPR::R9));
+		printf("R10 %p ", engine->GetGPR((int)EGPR::R10));
+		printf("R11 %p \n", engine->GetGPR((int)EGPR::R11));
+		printf("R12 %p ", engine->GetGPR((int)EGPR::R12));
+		printf("R13 %p ", engine->GetGPR((int)EGPR::R13));
+		printf("R14 %p ", engine->GetGPR((int)EGPR::R14));
+		printf("R15 %p \n", engine->GetGPR((int)EGPR::R15));
+		printf("Nxt ");
 		for (int i = 0; i < 10; i++)
 			printf("%02X ", ((UINT8*)engine->GetRip())[i]);
 		printf("\n\n");

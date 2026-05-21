@@ -530,7 +530,7 @@ bool AssemblyState::service_rol()
 	}
 
 	if(status)
-		printf("ROL");
+		printf("Rotate Left");
 
 	return status;
 }

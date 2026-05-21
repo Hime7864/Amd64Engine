@@ -255,6 +255,9 @@ bool AssemblyState::service_sar()
 	}break;
 	}
 
+	if(status)
+		printf("Shift Arithmetic Right");
+
 	return status;
 }
 

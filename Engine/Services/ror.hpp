@@ -530,7 +530,7 @@ bool AssemblyState::service_ror()
 	}
 
 	if (status)
-		printf("ROR");
+		printf("Rotate Right");
 
 	return status;
 }

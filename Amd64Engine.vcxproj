@@ -131,9 +131,10 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Engine.hpp" />
     <ClInclude Include="Engine\Services\add.hpp" />
     <ClInclude Include="Engine\Services\and.hpp" />
-    <ClInclude Include="Engine\Services\btr.hpp" />
+    <ClInclude Include="Engine\Services\bt.hpp" />
     <ClInclude Include="Engine\Services\call.hpp" />
     <ClInclude Include="Engine\Services\cmp.hpp" />
     <ClInclude Include="Engine\Services\dec.hpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="Engine\Services\syscall.hpp" />
     <ClInclude Include="Engine\Services\test.hpp" />
     <ClInclude Include="Engine\Services\xor.hpp" />
+    <ClInclude Include="Engine\structures.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

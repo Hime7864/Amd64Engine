@@ -37,7 +37,7 @@ bool AssemblyState::service_syscall()
 		*(UINT64*)(GPR[(int)EGPR::RSP] + 0x50)
 	);
 
-	printf("SYSCALL");
+	printf("System Call");
 	
 	RIP += 2;
 	status = true;

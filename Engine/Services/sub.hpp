@@ -920,7 +920,7 @@ bool AssemblyState::service_sub()
 	};
 
 	if (status)
-		printf("SUB");
+		printf("Subtract");
 
 	return status;
 }

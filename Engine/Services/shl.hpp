@@ -531,7 +531,7 @@ bool AssemblyState::service_shl()
 	}
 
 	if (status)
-		printf("SHL");
+		printf("Shift Left");
 
 	return status;
 }

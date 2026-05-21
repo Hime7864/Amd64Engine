@@ -451,7 +451,7 @@ bool AssemblyState::service_test()
 	};
 
 	if(status)
-		printf("TEST");
+		printf("Test");
 
 	return status;
 }

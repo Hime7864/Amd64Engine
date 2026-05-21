@@ -928,7 +928,7 @@ bool AssemblyState::service_add()
 	};
 
 	if (status)
-		printf("ADD");
+		printf("Add");
 
 	return status;
 }

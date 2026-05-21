@@ -911,7 +911,7 @@ bool AssemblyState::service_and()
 	};
 
 	if (status)
-		printf("AND");
+		printf("And");
 
 	return status;
 }

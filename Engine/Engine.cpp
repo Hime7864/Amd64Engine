@@ -4,7 +4,7 @@
 
 #include "Services/add.hpp"
 #include "Services/and.hpp"
-#include "Services/btr.hpp"
+#include "Services/bt.hpp"
 #include "Services/call.hpp"
 #include "Services/cmp.hpp"
 #include "Services/decode.hpp"
@@ -75,7 +75,7 @@ UINT64 AssemblyState::GetDisplacementPtr()
 					else if (Prefix.FS)
 						ptr += FsBase;
 
-					printf("[%x + r%i * %i]\n", imm, modrm2_register, mutiplier);
+					//printf("[%x + r%i * %i]\n", imm, modrm2_register, mutiplier);
 
 					RIP += 7;
 					return ptr;
@@ -225,8 +225,6 @@ UINT64 AssemblyState::GetDisplacementPtr()
 				ptr += GsBase;
 			else if (Prefix.FS)
 				ptr += FsBase;
-
-			//printf("!!!! [r%i + %x]\n", modrm_register_memory, imm);
 
 			RIP += 3;
 			return ptr;

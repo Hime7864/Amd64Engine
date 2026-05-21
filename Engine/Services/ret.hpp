@@ -8,7 +8,7 @@ bool AssemblyState::service_ret()
 	GPR[(int)EGPR::RSP] += 8;
 	status = true;
 	if (status)
-		printf("RET");
+		printf("Return");
 	return status;
 }
 

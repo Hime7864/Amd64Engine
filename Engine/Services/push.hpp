@@ -78,7 +78,7 @@ bool AssemblyState::service_push()
 	}
 
 	if (status)
-		printf("PUSH");
+		printf("Push");
 
 	return status;
 }

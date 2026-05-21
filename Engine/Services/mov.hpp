@@ -127,6 +127,136 @@ bool AssemblyState::service_mov()
 		{
 			switch (*RIP)
 			{
+			case 0x10:
+			{
+				auto modrm = (MODRM*)(&RIP[2]);
+				switch (modrm->Mode)
+				{
+				case EMODE::MEM_0_BIT_DISP:
+				case EMODE::MEM_8_BIT_DISP:
+				case EMODE::MEM_32_BIT_DISP:
+				{
+					auto ptr = GetDisplacementPtr();
+					if (ptr)
+					{
+						auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+						if (Prefix.OperandSize)
+						{
+							XMM[modrm_register] = *(XMMWORD*)ptr;
+						}
+						else if (Prefix.RepeatedNE)
+						{
+							auto src = (XMMWORD*)ptr;
+							XMM[modrm_register].u64.data[0] = src->u64.data[0];
+						}
+						else if (Prefix.Repeated)
+						{
+
+							auto src = (XMMWORD*)ptr;
+							XMM[modrm_register].u32.data[0] = src->u32.data[0];
+						}
+						else
+						{
+
+							XMM[modrm_register] = *(XMMWORD*)ptr;
+						}
+
+						status = true;
+					}
+				}break;
+				case EMODE::REG_TO_REG:
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+					if (Prefix.OperandSize)
+					{
+						XMM[modrm_register] = XMM[modrm_register_memory];
+					}
+					else if (Prefix.RepeatedNE)
+					{
+						XMM[modrm_register].u64.data[0] = XMM[modrm_register_memory].u64.data[0];
+					}
+					else if (Prefix.Repeated)
+					{
+						XMM[modrm_register].u32.data[0] = XMM[modrm_register_memory].u32.data[0];
+					}
+					else
+					{
+						XMM[modrm_register] = XMM[modrm_register_memory];
+					}
+
+					RIP += 2;
+					status = true;
+				}break;
+				};
+			}break;
+			case 0x11:
+			{
+				auto modrm = (MODRM*)(&RIP[2]);
+				switch (modrm->Mode)
+				{
+				case EMODE::MEM_0_BIT_DISP:
+				case EMODE::MEM_8_BIT_DISP:
+				case EMODE::MEM_32_BIT_DISP:
+				{
+					auto ptr = GetDisplacementPtr();
+					if (ptr)
+					{
+						auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+
+						if (Prefix.OperandSize)
+						{
+							*(XMMWORD*)ptr = XMM[modrm_register];
+						}
+						else if (Prefix.RepeatedNE)
+						{
+							auto src = (XMMWORD*)ptr;
+							src->u64.data[0] = XMM[modrm_register].u64.data[0];
+						}
+						else if (Prefix.Repeated)
+						{
+
+							auto src = (XMMWORD*)ptr;
+							src->u32.data[0] = XMM[modrm_register].u32.data[0];
+						}
+						else
+						{
+
+							*(XMMWORD*)ptr = XMM[modrm_register];
+						}
+
+						status = true;
+					}
+				}break;
+				case EMODE::REG_TO_REG:
+				{
+					auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+					auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+
+					if (Prefix.OperandSize)
+					{
+						XMM[modrm_register_memory] = XMM[modrm_register];
+					}
+					else if (Prefix.RepeatedNE)
+					{
+						XMM[modrm_register_memory].u64.data[0] = XMM[modrm_register].u64.data[0];
+					}
+					else if (Prefix.Repeated)
+					{
+						XMM[modrm_register_memory].u32.data[0] = XMM[modrm_register].u32.data[0];
+					}
+					else
+					{
+						XMM[modrm_register_memory] = XMM[modrm_register];
+					}
+
+					RIP += 2;
+					status = true;
+				}break;
+				};
+			}break;
 			case 0xB6:
 			{
 				auto modrm = (MODRM*)&RIP[1];

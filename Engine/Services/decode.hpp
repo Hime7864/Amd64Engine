@@ -18,6 +18,11 @@ bool AssemblyState::decode_mnemonic()
 	// repeated prefixes
 	switch (*RIP)
 	{
+	case 0xF2:
+	{
+		RIP++;
+		Prefix.RepeatedNE = 1;
+	}break;
 	case 0xF3:
 	{
 		RIP++;
@@ -155,6 +160,12 @@ bool AssemblyState::decode_mnemonic()
 		{
 			status = service_syscall();
 		}break;
+		case 0x10:
+		case 0x11:
+		case 0x12:
+		{
+			status = service_mov();
+		}break;
 		case 0x1F:
 		{
 			auto modrm = (MODRM*)(&RIP[2]);
@@ -213,9 +224,17 @@ bool AssemblyState::decode_mnemonic()
 		{
 			status = service_jmp();
 		}break;
+		case 0xA3:
+		{
+			status = service_bt();
+		}break;
+		case 0xAB:
+		{
+			status = service_bt();
+		}break;
 		case 0xB3:
 		{
-			status = service_btr();
+			status = service_bt();
 		}break;
 		case 0xB6:
 		case 0xB7:
@@ -227,11 +246,18 @@ bool AssemblyState::decode_mnemonic()
 			auto modrm = (MODRM*)(&RIP[2]);
 			switch (modrm->Register)
 			{
+			case 4:
+			case 5:
 			case 6:
+			case 7:
 			{
-				status = service_btr();
+				status = service_bt();
 			}break;
 			};
+		}break;
+		case 0xBB:
+		{
+			status = service_bt();
 		}break;
 		}
 	}break;
@@ -594,7 +620,7 @@ bool AssemblyState::decode_mnemonic()
 				size = Advancement - (UINT64)start_rip;
 			else if(size > 10)
 				size = 10;
-			printf(" > Decoded [ ");
+			printf(": Decoded [ ");
 			for (UINT64 i = 0; i < size; i++)
 				printf("%02X ", start_rip[i]);
 			printf("]\n");
@@ -606,7 +632,7 @@ bool AssemblyState::decode_mnemonic()
 				auto size = Advancement - (UINT64)start_rip;
 				if (size > 10)
 					size = 10;
-				printf(" > Decoded [ ");
+				printf(": Decoded [ ");
 				for (UINT64 i = 0; i < size; i++)
 					printf("%02X ", start_rip[i]);
 				printf("]\n");

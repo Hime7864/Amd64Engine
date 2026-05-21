@@ -911,7 +911,7 @@ bool AssemblyState::service_xor()
 	};
 
 	if (status)
-		printf("XOR");
+		printf("Xor");
 
 	return status;
 }

@@ -36,7 +36,7 @@ bool AssemblyState::service_lea()
 	};
 
 	if (status)
-		printf("LEA");
+		printf("Load Effective Address");
 
 	return status;
 }

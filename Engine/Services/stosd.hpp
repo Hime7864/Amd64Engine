@@ -34,7 +34,7 @@ bool AssemblyState::service_stosd()
 	RIP += 1;
 
 	if(status)
-		printf("STOSD");
+		printf("Store String");
 
 	return status;
 }
