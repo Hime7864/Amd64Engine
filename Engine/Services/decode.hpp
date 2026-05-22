@@ -319,6 +319,10 @@ bool AssemblyState::decode_mnemonic()
 	{
 		status = service_pop();
 	}break;
+	case 0x63:
+	{
+		status = service_mov();
+	}break;
 	case 0x70:
 	case 0x71:
 	case 0x72:
@@ -473,11 +477,11 @@ bool AssemblyState::decode_mnemonic()
 		}break;
 		case 6:
 		{
-			status = service_sar();
+			status = service_shl();
 		}break;
 		case  7:
 		{
-			status = service_shl();
+			status = service_sar();
 		}break;
 		};
 	}break;

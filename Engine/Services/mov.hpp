@@ -374,6 +374,47 @@ bool AssemblyState::service_mov()
 			}
 		}
 	}break;
+	case 0x63:
+	{
+		auto modrm = (MODRM*)(&RIP[1]);
+		switch (modrm->Mode)
+		{
+		case EMODE::MEM_0_BIT_DISP:
+		case EMODE::MEM_8_BIT_DISP:
+		case EMODE::MEM_32_BIT_DISP:
+		{
+			auto ptr = GetDisplacementPtr();
+			if (ptr)
+			{
+				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+				if (Prefix.W)
+				{
+					GPR[modrm_register] = (UINT64)(INT32)*(UINT32*)ptr;
+				}
+				else
+				{
+					GPR[modrm_register] = *(UINT32*)ptr;
+				}
+				status = true;
+			}
+		}break;
+		case EMODE::REG_TO_REG:
+		{
+			auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
+			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+			if (Prefix.W)
+			{
+				GPR[modrm_register] = (UINT64)(INT32)*(UINT32*)&GPR[modrm_register_memory];
+			}
+			else
+			{
+				GPR[modrm_register] = *(UINT32*)&GPR[modrm_register_memory];
+			}
+			RIP += 2;
+			status = true;
+		}break;
+		}
+	}break;
 	case 0x88:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);

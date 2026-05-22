@@ -47,19 +47,19 @@ bool AssemblyState::service_sar()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					auto src = RIP[2];
+					auto src = RIP[0];
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						auto src = RIP[2];
+						auto src = RIP[0];
 					}
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						auto src = RIP[2];
+						auto src = RIP[0];
 					}
 				}
 			}

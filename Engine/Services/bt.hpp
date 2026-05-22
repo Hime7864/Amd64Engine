@@ -112,6 +112,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x3F;
 						auto bitMask = 1ULL << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase |= bitMask;
+						*(UINT64*)ptr = bitBase;
 					}
 					else
 					{
@@ -122,6 +124,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x0F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase |= bitMask;
+							*(UINT64*)ptr = bitBase;
 						}
 						else
 						{
@@ -130,6 +134,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x1F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase |= bitMask;
+							*(UINT64*)ptr = bitBase;
 						}
 					}
 					status = true;
@@ -146,6 +152,8 @@ bool AssemblyState::service_bt()
 					auto bitIndex = bitOffset & 0x3F;
 					auto bitMask = 1ULL << bitIndex;
 					FLAGS.CF = (bitBase & bitMask) != 0;
+					bitBase |= bitMask;
+					*(UINT64*)&GPR[modrm_register_memory] = bitBase;
 				}
 				else
 				{
@@ -156,6 +164,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x0F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase |= bitMask;
+						*(UINT16*)&GPR[modrm_register_memory] = bitBase;
 					}
 					else
 					{
@@ -164,6 +174,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x1F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase |= bitMask;
+						*(UINT32*)&GPR[modrm_register_memory] = bitBase;
 					}
 				}
 				RIP++;
@@ -192,6 +204,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x3F;
 						auto bitMask = 1ULL << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase &= ~bitMask;
+						*(UINT64*)ptr = bitBase;
 					}
 					else
 					{
@@ -202,6 +216,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x0F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase &= ~bitMask;
+							*(UINT16*)ptr = bitBase;
 						}
 						else
 						{
@@ -210,6 +226,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x1F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase &= ~bitMask;
+							*(UINT32*)ptr = bitBase;
 						}
 					}
 					status = true;
@@ -226,6 +244,8 @@ bool AssemblyState::service_bt()
 					auto bitIndex = bitOffset & 0x3F;
 					auto bitMask = 1ULL << bitIndex;
 					FLAGS.CF = (bitBase & bitMask) != 0;
+					bitBase &= ~bitMask;
+					*(UINT64*)&GPR[modrm_register_memory] = bitBase;
 				}
 				else
 				{
@@ -236,6 +256,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x0F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase &= ~bitMask;
+						*(UINT16*)&GPR[modrm_register_memory] = bitBase;
 					}
 					else
 					{
@@ -244,6 +266,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x1F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase &= ~bitMask;
+						*(UINT32*)&GPR[modrm_register_memory] = bitBase;
 					}
 				}
 				RIP++;
@@ -255,25 +279,6 @@ bool AssemblyState::service_bt()
 		{
 			// r/m16/32/64	imm8
 			auto modrm = (MODRM*)(&RIP[1]);
-			switch (modrm->Register)
-			{
-			case 4:
-			{
-
-			}break;
-			case 5:
-			{
-
-			}break;
-			case 6:
-			{
-
-			}break;
-			case 7:
-			{
-
-			}break;
-			};
 			switch (modrm->Mode)
 			{
 			case EMODE::MEM_0_BIT_DISP:
@@ -283,38 +288,88 @@ bool AssemblyState::service_bt()
 				auto ptr = GetDisplacementPtr();
 				if (ptr)
 				{
-					auto imm = *(UINT8*)(&RIP[0]);
+					auto imm = *(UINT8*)(&RIP[1]);
 					if (Prefix.W)
 					{
 						auto bitBase = *(UINT64*)ptr;
-						auto bitOffset = imm;
-						auto bitIndex = bitOffset & 0x3F;
+						auto bitIndex = imm & 0x3F;
 						auto bitMask = 1ULL << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						switch (modrm->Register)
+						{
+						case 5:
+						{
+							bitBase |= bitMask;
+							*(UINT64*)ptr = bitBase;
+						}break;
+						case 6:
+						{
+							bitBase &= ~bitMask;
+							*(UINT64*)ptr = bitBase;
+						}break;
+						case 7:
+						{
+							bitBase ^= bitMask;
+							*(UINT64*)ptr = bitBase;
+						}break;
+						};
 					}
 					else
 					{
 						if (Prefix.OperandSize)
 						{
 							auto bitBase = *(UINT16*)ptr;
-							auto bitOffset = imm;
-							auto bitIndex = bitOffset & 0x0F;
+							auto bitIndex = imm & 0x0F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							switch (modrm->Register)
+							{
+							case 5:
+							{
+								bitBase |= bitMask;
+								*(UINT16*)ptr = bitBase;
+							}break;
+							case 6:
+							{
+								bitBase &= ~bitMask;
+								*(UINT16*)ptr = bitBase;
+							}break;
+							case 7:
+							{
+								bitBase ^= bitMask;
+								*(UINT16*)ptr = bitBase;
+							}break;
+							};
 						}
 						else
 						{
 							auto bitBase = *(UINT32*)ptr;
-							auto bitOffset = imm;
-							auto bitIndex = bitOffset & 0x1F;
+							auto bitIndex = imm & 0x1F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							switch (modrm->Register)
+							{
+							case 5:
+							{
+								bitBase |= bitMask;
+								*(UINT32*)ptr = bitBase;
+							}break;
+							case 6:
+							{
+								bitBase &= ~bitMask;
+								*(UINT32*)ptr = bitBase;
+							}break;
+							case 7:
+							{
+								bitBase ^= bitMask;
+								*(UINT32*)ptr = bitBase;
+							}break;
+							};
 						}
 					}
 					RIP++;
 					status = true;
 				}
-
 			}break;
 			case EMODE::REG_TO_REG:
 			{
@@ -323,33 +378,84 @@ bool AssemblyState::service_bt()
 				if (Prefix.W)
 				{
 					auto bitBase = *(UINT64*)&GPR[modrm_register_memory];
-					auto bitOffset = imm;
-					auto bitIndex = bitOffset & 0x3F;
+					auto bitIndex = imm & 0x3F;
 					auto bitMask = 1ULL << bitIndex;
 					FLAGS.CF = (bitBase & bitMask) != 0;
+					switch (modrm->Register)
+					{
+					case 5:
+					{
+						bitBase |= bitMask;
+						*(UINT64*)&GPR[modrm_register_memory] = bitBase;
+					}break;
+					case 6:
+					{
+						bitBase &= ~bitMask;
+						*(UINT64*)&GPR[modrm_register_memory] = bitBase;
+					}break;
+					case 7:
+					{
+						bitBase ^= bitMask;
+						*(UINT64*)&GPR[modrm_register_memory] = bitBase;
+					}break;
+					};
 				}
 				else
 				{
 					if (Prefix.OperandSize)
 					{
 						auto bitBase = *(UINT16*)&GPR[modrm_register_memory];
-						auto bitOffset = imm;
-						auto bitIndex = bitOffset & 0x0F;
+						auto bitIndex = imm & 0x0F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						switch (modrm->Register)
+						{
+						case 5:
+						{
+							bitBase |= bitMask;
+							*(UINT16*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						case 6:
+						{
+							bitBase &= ~bitMask;
+							*(UINT16*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						case 7:
+						{
+							bitBase ^= bitMask;
+							*(UINT16*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						};
 					}
 					else
 					{
 						auto bitBase = *(UINT32*)&GPR[modrm_register_memory];
-						auto bitOffset = imm;
-						auto bitIndex = bitOffset & 0x1F;
+						auto bitIndex = imm & 0x1F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						switch (modrm->Register)
+						{
+						case 5:
+						{
+							bitBase |= bitMask;
+							*(UINT32*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						case 6:
+						{
+							bitBase &= ~bitMask;
+							*(UINT32*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						case 7:
+						{
+							bitBase ^= bitMask;
+							*(UINT32*)&GPR[modrm_register_memory] = bitBase;
+						}break;
+						};
 					}
 				}
-				RIP += 3;
+				RIP+=3;
 				status = true;
-			}break;
+			}
 			};
 		}break;
 		case 0xBB:
@@ -373,6 +479,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x3F;
 						auto bitMask = 1ULL << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase ^= bitMask;
+						*(UINT64*)ptr = bitBase;
 					}
 					else
 					{
@@ -383,6 +491,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x0F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase ^= bitMask;
+							*(UINT16*)ptr = bitBase;
 						}
 						else
 						{
@@ -391,6 +501,8 @@ bool AssemblyState::service_bt()
 							auto bitIndex = bitOffset & 0x1F;
 							auto bitMask = 1U << bitIndex;
 							FLAGS.CF = (bitBase & bitMask) != 0;
+							bitBase ^= bitMask;
+							*(UINT32*)ptr = bitBase;
 						}
 					}
 					status = true;
@@ -407,6 +519,8 @@ bool AssemblyState::service_bt()
 					auto bitIndex = bitOffset & 0x3F;
 					auto bitMask = 1ULL << bitIndex;
 					FLAGS.CF = (bitBase & bitMask) != 0;
+					bitBase ^= bitMask;
+					*(UINT64*)&GPR[modrm_register_memory] = bitBase;
 				}
 				else
 				{
@@ -417,6 +531,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x0F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase ^= bitMask;
+						*(UINT16*)&GPR[modrm_register_memory] = bitBase;
 					}
 					else
 					{
@@ -425,6 +541,8 @@ bool AssemblyState::service_bt()
 						auto bitIndex = bitOffset & 0x1F;
 						auto bitMask = 1U << bitIndex;
 						FLAGS.CF = (bitBase & bitMask) != 0;
+						bitBase ^= bitMask;
+						*(UINT32*)&GPR[modrm_register_memory] = bitBase;
 					}
 				}
 				RIP++;

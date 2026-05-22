@@ -48,6 +48,8 @@ int main()
 		for (int i = 0; i < 10; i++)
 			printf("%02X ", ((UINT8*)engine->GetRip())[i]);
 		printf("\n\n");
+		printf("idx: %d\n", counter);
+		printf("RIP: %p\n", engine->GetRip());
 		counter++;
 	}
 

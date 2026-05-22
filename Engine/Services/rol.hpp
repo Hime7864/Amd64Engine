@@ -19,7 +19,7 @@ bool AssemblyState::service_rol()
 			if (ptr)
 			{
 				auto dest = *(UINT8*)ptr;
-				UINT8 count = RIP[2];
+				UINT8 count = RIP[0];
 				UINT8 masked = count & 7;
 
 				if (masked)
@@ -72,7 +72,7 @@ bool AssemblyState::service_rol()
 				if (Prefix.W)
 				{
 					auto dest = *(UINT64*)ptr;
-					UINT8 count = RIP[2];
+					UINT8 count = RIP[0];
 					UINT8 masked = count & 63;
 
 					if (masked)
@@ -90,7 +90,7 @@ bool AssemblyState::service_rol()
 					if (Prefix.OperandSize)
 					{
 						auto dest = *(UINT16*)ptr;
-						UINT8 count = RIP[2];
+						UINT8 count = RIP[0];
 						UINT8 masked = count & 15;
 
 						if (masked)
@@ -106,7 +106,7 @@ bool AssemblyState::service_rol()
 					else
 					{
 						auto dest = *(UINT32*)ptr;
-						UINT8 count = RIP[2];
+						UINT8 count = RIP[0];
 						UINT8 masked = count & 31;
 
 						if (masked)
