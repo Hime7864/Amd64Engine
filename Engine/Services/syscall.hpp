@@ -22,7 +22,7 @@ bool AssemblyState::service_syscall()
 	bool status = false;
 
 	FnSyscall syscall;
-
+	printf("Syscall: %d\n", (int)GPR[(int)EGPR::RAX]);
 	syscall_number = GPR[(int)EGPR::RAX];
 	GPR[(int)EGPR::RAX] = FnSyscall::invoke<UINT64>(
 		GPR[(int)EGPR::R10],
@@ -37,8 +37,6 @@ bool AssemblyState::service_syscall()
 		*(UINT64*)(GPR[(int)EGPR::RSP] + 0x50)
 	);
 
-	printf("System Call");
-	
 	RIP += 2;
 	status = true;
 

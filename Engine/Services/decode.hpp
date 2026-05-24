@@ -2,9 +2,7 @@
 
 bool AssemblyState::decode_mnemonic()
 {
-	Advancement = 0;
 	bool status = false;
-	auto start_rip = RIP;
 	Prefix = { 0 };
 
 	// skip NOPs
@@ -18,6 +16,11 @@ bool AssemblyState::decode_mnemonic()
 	// repeated prefixes
 	switch (*RIP)
 	{
+	case 0xF0:
+	{
+		RIP++;
+		Prefix.LOCK = 1;
+	}break;
 	case 0xF2:
 	{
 		RIP++;
@@ -28,15 +31,10 @@ bool AssemblyState::decode_mnemonic()
 		RIP++;
 		Prefix.Repeated = 1;
 	}break;
-	};
-
-	// lock prefixes
-	switch (*RIP)
+	case 0x9B:
 	{
-	case 0xF0:
-	{
-		RIP++;
-		Prefix.LOCK = 1;
+		printf("Prefix 9B, Aborting\n");
+		return false;
 	}break;
 	};
 
@@ -115,17 +113,6 @@ bool AssemblyState::decode_mnemonic()
 		Prefix.X = (*RIP >> 1) & 1;
 		Prefix.B = (*RIP >> 0) & 1;
 		RIP++;
-	}break;
-
-	case 0x9B:
-	{
-		printf("Prefix 9B, Aborting\n");
-		return false;
-	}break;
-	case 0xF2:
-	{
-		printf("Prefix F2, Aborting\n");
-		return false;
 	}break;
 	default:
 		break;
@@ -528,11 +515,11 @@ bool AssemblyState::decode_mnemonic()
 		}break;
 		case 6:
 		{
-			status = service_sar();
+			status = service_shl();
 		}break;
 		case  7:
 		{
-			status = service_shl();
+			status = service_sar();
 		}break;
 		};
 	}break;
@@ -614,49 +601,6 @@ bool AssemblyState::decode_mnemonic()
 		}
 	}break;
 	};
-	
-	if (status)
-	{
-		if ((INT64)start_rip < (INT64)RIP)
-		{
-			auto size = (UINT64)RIP - (UINT64)start_rip;
-			if(Advancement && size > 10)
-				size = Advancement - (UINT64)start_rip;
-			else if(size > 10)
-				size = 10;
-			printf(": Decoded [ ");
-			for (UINT64 i = 0; i < size; i++)
-				printf("%02X ", start_rip[i]);
-			printf("]\n");
-		}
-		else
-		{
-			if (Advancement)
-			{
-				auto size = Advancement - (UINT64)start_rip;
-				if (size > 10)
-					size = 10;
-				printf(": Decoded [ ");
-				for (UINT64 i = 0; i < size; i++)
-					printf("%02X ", start_rip[i]);
-				printf("]\n");
-			}
-			else
-			{
-				printf("\nFailed [ ");
-				for (int i = 0; i < 10; i++)
-					printf("%02X ", start_rip[i]);
-				printf("]\n");
-			}
-		}
-	}
-	else
-	{
-		printf("\nFailed [ ");
-		for (int i = 0; i < 10; i++)
-			printf("%02X ", start_rip[i]);
-		printf("]\n");
-	}
 
 	if (RIP == 0x0)
 		return true;

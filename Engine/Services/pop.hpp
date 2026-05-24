@@ -62,9 +62,6 @@ bool AssemblyState::service_pop()
 	}break;
 	};
 
-	if(status)
-		printf("Pop\n");
-
 	return status;
 }
 

@@ -33,9 +33,6 @@ bool AssemblyState::service_stosd()
 	status = true;
 	RIP += 1;
 
-	if(status)
-		printf("Store String");
-
 	return status;
 }
 

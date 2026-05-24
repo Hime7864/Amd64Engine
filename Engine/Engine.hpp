@@ -6,7 +6,6 @@ class AssemblyState
 private:
 	UINT64 GPR[16];
 	XMMWORD XMM[16];
-	UINT64 Advancement;
 	BYTE* RIP;
 	EFLAGS FLAGS;
 	UINT64 GsBase;
@@ -18,6 +17,7 @@ private:
 
 	UINT64 GetDisplacementPtr();
 
+	bool decode_mnemonic();
 	// basic arithmetic
 
 	bool service_add();
@@ -61,18 +61,19 @@ private:
 
 	bool service_stosd();
 	bool service_bt();
-	// decoder
-
-	bool decode_mnemonic();
 public:
-	void SetRip(PVOID rip);
 	UINT64 GetRip();
-
-	void SetGPR(int index, UINT64 value);
+	void SetRip(PVOID rip);
+	
 	UINT64 GetGPR(int index);
+	void SetGPR(int index, UINT64 value);
+	
+	void GetFlags(EFLAGS* flags);
+	void SetFlags(EFLAGS* flags);
 
 	void SetGsBase(UINT64 value) { GsBase = value; }
 	void SetFsBase(UINT64 value) { FsBase = value; }
 
 	bool step();
+	void log_step();
 };

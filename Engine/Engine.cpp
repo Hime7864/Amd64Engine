@@ -303,8 +303,14 @@ UINT64 AssemblyState::GetDisplacementPtr()
 			return ptr;
 		}
 	}break;
+	case EMODE::REG_TO_REG:
+	{
+		auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
+		auto ptr = &GPR[modrm_register_memory];
+		RIP += 2;
+		return (UINT64)ptr;
+	}break;
 	};
-
 	return 0;
 }
 
@@ -335,15 +341,15 @@ void AssemblyState::log_Prefix()
 	printf("]\n");
 }
 
+UINT64 AssemblyState::GetRip()
+{
+	return (UINT64)RIP;
+}
+
 void AssemblyState::SetRip(PVOID rip)
 {
 	RIP = (BYTE*)rip;
 	return;
-}
-
-UINT64 AssemblyState::GetRip()
-{
-	return (UINT64)RIP;
 }
 
 UINT64 AssemblyState::GetGPR(int index)
@@ -357,6 +363,18 @@ void AssemblyState::SetGPR(int index, UINT64 value)
 	return;
 }
 
+void AssemblyState::GetFlags(EFLAGS* flags)
+{
+	flags = &FLAGS;
+	return;
+}
+
+void AssemblyState::SetFlags(EFLAGS* flags)
+{
+	FLAGS = *flags;
+	return;
+}
+
 bool AssemblyState::step()
 {
 	bool status = false;
@@ -367,4 +385,38 @@ bool AssemblyState::step()
 		return false;
 
 	return status;
+}
+
+void AssemblyState::log_step()
+{
+	printf("[%p] CF %i, PF %i, AF %i, ZF %i, SF %i, TF %i, IF %i, DF %i, OF %i\n",
+		RIP, FLAGS.CF, FLAGS.PF, FLAGS.AF, FLAGS.ZF, FLAGS.SF, FLAGS.TF, FLAGS.IF, FLAGS.DF, FLAGS.OF);
+	printf("RAX %p ", GPR[(int)EGPR::RAX]);
+	printf("RCX %p ", GPR[(int)EGPR::RCX]);
+	printf("RDX %p ", GPR[(int)EGPR::RDX]);
+	printf("RBX %p \n", GPR[(int)EGPR::RBX]);
+	printf("RSP %p ", GPR[(int)EGPR::RSP]);
+	printf("RBP %p ", GPR[(int)EGPR::RBP]);
+	printf("RSI %p ", GPR[(int)EGPR::RSI]);
+	printf("RDI %p \n", GPR[(int)EGPR::RDI]);
+	printf("R8  %p ", GPR[(int)EGPR::R8]);
+	printf("R9  %p ", GPR[(int)EGPR::R9]);
+	printf("R10 %p ", GPR[(int)EGPR::R10]);
+	printf("R11 %p \n", GPR[(int)EGPR::R11]);
+	printf("R12 %p ", GPR[(int)EGPR::R12]);
+	printf("R13 %p ", GPR[(int)EGPR::R13]);
+	printf("R14 %p ", GPR[(int)EGPR::R14]);
+	printf("R15 %p \n", GPR[(int)EGPR::R15]);
+
+	for (int i = 0; i < 16; i++)
+	{
+		auto xmm = XMM[i];
+		printf("XMM%02i: %08x %08x %08x %08x", i, xmm.u32.data[0], xmm.u32.data[1], xmm.u32.data[2], xmm.u32.data[3]);
+		if(i % 2)
+			printf("\n");
+		else
+			printf(" ");
+	}
+	printf("\n");
+	return;
 }

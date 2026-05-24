@@ -9,529 +9,237 @@ bool AssemblyState::service_shl()
 	case 0xC0:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				auto dest = *(UINT8*)ptr;
-				UINT8 count = RIP[2];
-				UINT8 masked = count & 7;
-
-				if (masked)
-				{
-					auto result = (UINT8)(dest << masked);
-					*(UINT8*)ptr = result;
-
-					FLAGS.CF = (dest >> (8 - masked)) & 1;
-					if (masked == 1)
-						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
-				}
-
-				RIP++;
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
-			auto dest = *(UINT8*)&GPR[modrm_register_memory];
-			UINT8 count = RIP[2];
+			auto dest = *(UINT8*)ptr;
+			UINT8 count = RIP[0];
 			UINT8 masked = count & 7;
 
 			if (masked)
 			{
 				auto result = (UINT8)(dest << masked);
-				*(UINT8*)&GPR[modrm_register_memory] = result;
+				*(UINT8*)ptr = result;
 
 				FLAGS.CF = (dest >> (8 - masked)) & 1;
 				if (masked == 1)
 					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
 			}
-			RIP += 3;
+
+			RIP++;
 			status = true;
-		}break;
-		};
+		}
 	}break;
 	case 0xC1:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				if (Prefix.W)
-				{
-					auto dest = *(UINT64*)ptr;
-					UINT8 count = RIP[2];
-					UINT8 masked = count & 63;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						*(UINT64*)ptr = result;
-
-						FLAGS.CF = (dest >> (64 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
-					}
-				}
-				else
-				{
-					if (Prefix.OperandSize)
-					{
-						auto dest = *(UINT16*)ptr;
-						UINT8 count = RIP[2];
-						UINT8 masked = count & 15;
-
-						if (masked)
-						{
-							auto result = (UINT16)(dest << masked);
-							*(UINT16*)ptr = result;
-
-							FLAGS.CF = (dest >> (64 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-						}
-					}
-					else
-					{
-						auto dest = *(UINT32*)ptr;
-						UINT8 count = RIP[2];
-						UINT8 masked = count & 31;
-
-						if (masked)
-						{
-							auto result = dest << masked;
-							*(UINT32*)ptr = result;
-
-							FLAGS.CF = (dest >> (16 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-						}
-					}
-				}
-				RIP++;
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)&GPR[modrm_register_memory];
-				UINT8 count = RIP[2];
+				auto dest = *(UINT64*)ptr;
+				UINT8 count = RIP[0];
 				UINT8 masked = count & 63;
 
 				if (masked)
 				{
 					auto result = dest << masked;
-					*(UINT64*)&GPR[modrm_register_memory] = result;
+					*(UINT64*)ptr = result;
 
-					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
 					if (masked == 1)
 						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
 				}
 			}
-			else
+			else if (!Prefix.OperandSize)
 			{
-				if (Prefix.OperandSize)
+				auto dest = *(UINT32*)ptr;
+				UINT8 count = RIP[0];
+				UINT8 masked = count & 31;
+
+				if (masked)
 				{
-					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					UINT8 count = RIP[2];
-					UINT8 masked = count & 15;
+					auto result = dest << masked;
+					*(UINT32*)ptr = result;
 
-					if (masked)
-					{
-						auto result = (UINT16)(dest << masked);
-						*(UINT16*)&GPR[modrm_register_memory] = result;
-
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-					}
-				}
-				else
-				{
-					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					UINT8 count = RIP[2];
-					UINT8 masked = count & 31;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						GPR[modrm_register_memory] = 0;
-						*(UINT32*)&GPR[modrm_register_memory] = result;
-
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-					}
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
 				}
 			}
-			RIP += 3;
-			status = true;
+			else
+			{
+				auto dest = *(UINT16*)ptr;
+				UINT8 count = RIP[0];
+				UINT8 masked = count & 15;
 
-		}break;
-		};
+				if (masked)
+				{
+					auto result = (UINT16)(dest << masked);
+					*(UINT16*)ptr = result;
+
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+				}
+			}
+			RIP++;
+			status = true;
+		}
 	}break;
 	case 0xD0:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				auto dest = *(UINT8*)ptr;
-				UINT8 count = 1;
-				UINT8 masked = count & 7;
-
-				if (masked)
-				{
-					auto result = (UINT8)(dest << masked);
-					*(UINT8*)ptr = result;
-
-					FLAGS.CF = (dest >> (8 - masked)) & 1;
-					if (masked == 1)
-						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
-				}
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
-			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto dest = *(UINT8*)ptr;
 			UINT8 count = 1;
 			UINT8 masked = count & 7;
 
 			if (masked)
 			{
 				auto result = (UINT8)(dest << masked);
-				*(UINT8*)&GPR[modrm_register_memory] = result;
+				*(UINT8*)ptr = result;
 
 				FLAGS.CF = (dest >> (8 - masked)) & 1;
 				if (masked == 1)
 					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
 			}
-			RIP++;
 			status = true;
-		}break;
-		};
+		}
 	}break;
 	case 0xD1:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				if (Prefix.W)
-				{
-					auto dest = *(UINT64*)ptr;
-					UINT8 count = 1;
-					UINT8 masked = count & 63;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						*(UINT64*)ptr = result;
-						FLAGS.CF = (dest >> (64 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
-					}
-				}
-				else
-				{
-					if (Prefix.OperandSize)
-					{
-						auto dest = *(UINT16*)ptr;
-						UINT8 count = 1;
-						UINT8 masked = count & 15;
-
-						if (masked)
-						{
-							auto result = (UINT16)(dest << masked);
-							*(UINT16*)ptr = result;
-							FLAGS.CF = (dest >> (64 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-						}
-					}
-					else
-					{
-						auto dest = *(UINT32*)ptr;
-						UINT8 count = 1;
-						UINT8 masked = count & 31;
-
-						if (masked)
-						{
-							auto result = dest << masked;
-							*(UINT32*)ptr = result;
-							FLAGS.CF = (dest >> (16 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-						}
-					}
-				}
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto dest = *(UINT64*)ptr;
 				UINT8 count = 1;
 				UINT8 masked = count & 63;
 
 				if (masked)
 				{
 					auto result = dest << masked;
-					*(UINT64*)&GPR[modrm_register_memory] = result;
-					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					*(UINT64*)ptr = result;
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
 					if (masked == 1)
 						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
 				}
 			}
-			else
+			else if (!Prefix.OperandSize)
 			{
-				if (Prefix.OperandSize)
-				{
-					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					UINT8 count = 1;
-					UINT8 masked = count & 15;
+				auto dest = *(UINT32*)ptr;
+				UINT8 count = 1;
+				UINT8 masked = count & 31;
 
-					if (masked)
-					{
-						auto result = (UINT16)(dest << masked);
-						*(UINT16*)&GPR[modrm_register_memory] = result;
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-					}
-				}
-				else
+				if (masked)
 				{
-					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					UINT8 count = 1;
-					UINT8 masked = count & 31;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						GPR[modrm_register_memory] = 0;
-						*(UINT32*)&GPR[modrm_register_memory] = result;
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-					}
+					auto result = dest << masked;
+					*(UINT32*)ptr = result;
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
 				}
 			}
-			RIP++;
+			else
+			{
+				auto dest = *(UINT16*)ptr;
+				UINT8 count = 1;
+				UINT8 masked = count & 15;
+
+				if (masked)
+				{
+					auto result = (UINT16)(dest << masked);
+					*(UINT16*)ptr = result;
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+				}
+			}
 			status = true;
-		}break;
-		};
+		}
 	}break;
 	case 0xD2:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				auto dest = *(UINT8*)ptr;
-				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-				UINT8 masked = count & 7;
-
-				if (masked)
-				{
-					auto result = (UINT8)(dest << masked);
-					*(UINT8*)ptr = result;
-					FLAGS.CF = (dest >> (8 - masked)) & 1;
-					if (masked == 1)
-						FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
-				}
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
-			auto dest = *(UINT8*)&GPR[modrm_register_memory];
+			auto dest = *(UINT8*)ptr;
 			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
 			UINT8 masked = count & 7;
 
 			if (masked)
 			{
 				auto result = (UINT8)(dest << masked);
-				*(UINT8*)&GPR[modrm_register_memory] = result;
+				*(UINT8*)ptr = result;
 				FLAGS.CF = (dest >> (8 - masked)) & 1;
 				if (masked == 1)
 					FLAGS.OF = ((result >> 7) & 1) ^ ((dest >> 7) & 1);
 			}
 			status = true;
-			RIP++;
-		}break;
-		};
+		}
 	}break;
 	case 0xD3:
 	{
 		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Mode)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case EMODE::MEM_0_BIT_DISP:
-		case EMODE::MEM_8_BIT_DISP:
-		case EMODE::MEM_32_BIT_DISP:
-		{
-			auto ptr = GetDisplacementPtr();
-			if (ptr)
-			{
-				if (Prefix.W)
-				{
-					auto dest = *(UINT64*)ptr;
-					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-					UINT8 masked = count & 63;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						*(UINT64*)ptr = result;
-						FLAGS.CF = (dest >> (64 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
-					}
-				}
-				else
-				{
-					if (Prefix.OperandSize)
-					{
-						auto dest = *(UINT16*)ptr;
-						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-						UINT8 masked = count & 15;
-
-						if (masked)
-						{
-							auto result = (UINT16)(dest << masked);
-							*(UINT16*)ptr = result;
-							FLAGS.CF = (dest >> (64 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-						}
-					}
-					else
-					{
-						auto dest = *(UINT32*)ptr;
-						UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-						UINT8 masked = count & 31;
-
-						if (masked)
-						{
-							auto result = dest << masked;
-							*(UINT32*)ptr = result;
-							FLAGS.CF = (dest >> (16 - masked)) & 1;
-							if (masked == 1)
-								FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-						}
-					}
-				}
-				status = true;
-			}
-		}break;
-		case EMODE::REG_TO_REG:
-		{
-			auto modrm_register_memory = Prefix.B ? modrm->RegisterMemory + 8 : modrm->RegisterMemory;
-
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)&GPR[modrm_register_memory];
+				auto dest = *(UINT64*)ptr;
 				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
 				UINT8 masked = count & 63;
 
 				if (masked)
 				{
 					auto result = dest << masked;
-					*(UINT64*)&GPR[modrm_register_memory] = result;
-					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					*(UINT64*)ptr = result;
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
 					if (masked == 1)
 						FLAGS.OF = ((result >> 63) & 1) ^ ((dest >> 63) & 1);
 				}
 			}
-			else
+			else if (!Prefix.OperandSize)
 			{
-				if (Prefix.OperandSize)
-				{
-					auto dest = *(UINT16*)&GPR[modrm_register_memory];
-					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-					UINT8 masked = count & 15;
+				auto dest = *(UINT32*)ptr;
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 31;
 
-					if (masked)
-					{
-						auto result = (UINT16)(dest << masked);
-						*(UINT16*)&GPR[modrm_register_memory] = result;
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
-					}
-				}
-				else
+				if (masked)
 				{
-					auto dest = *(UINT32*)&GPR[modrm_register_memory];
-					UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-					UINT8 masked = count & 31;
-
-					if (masked)
-					{
-						auto result = dest << masked;
-						GPR[modrm_register_memory] = 0;
-						*(UINT32*)&GPR[modrm_register_memory] = result;
-						FLAGS.CF = (dest >> (32 - masked)) & 1;
-						if (masked == 1)
-							FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
-					}
+					auto result = dest << masked;
+					*(UINT32*)ptr = result;
+					FLAGS.CF = (dest >> (16 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 31) & 1) ^ ((dest >> 31) & 1);
 				}
 			}
+			else
+			{
+				auto dest = *(UINT16*)ptr;
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 masked = count & 15;
 
+				if (masked)
+				{
+					auto result = (UINT16)(dest << masked);
+					*(UINT16*)ptr = result;
+					FLAGS.CF = (dest >> (64 - masked)) & 1;
+					if (masked == 1)
+						FLAGS.OF = ((result >> 15) & 1) ^ ((dest >> 15) & 1);
+				}
+			}
 			status = true;
-			RIP += 2;
-		}break;
-		};
+		}
 	}break;
 	}
-
-	if (status)
-		printf("Shift Left");
 
 	return status;
 }

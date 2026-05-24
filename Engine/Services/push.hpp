@@ -42,43 +42,25 @@ bool AssemblyState::service_push()
 	}break;
 	case 0xFF:
 	{
-		auto modrm = (MODRM*)(&RIP[1]);
-		switch (modrm->Register)
+		auto ptr = GetDisplacementPtr();
+		if (ptr)
 		{
-		case 6:
-		{
-			switch (modrm->Mode)
+			if (Prefix.OperandSize)
 			{
-			case EMODE::MEM_0_BIT_DISP:
-			case EMODE::MEM_8_BIT_DISP:
-			case EMODE::MEM_32_BIT_DISP:
+				GPR[(int)EGPR::RSP] -= 2;
+				*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
+			}
+			else
 			{
-				auto ptr = GetDisplacementPtr();
-				if (ptr)
-				{
-					if (Prefix.OperandSize)
-					{
-						GPR[(int)EGPR::RSP] -= 2;
-						*(UINT16*)GPR[(int)EGPR::RSP] = *(UINT16*)ptr;
-					}
-					else
-					{
-						GPR[(int)EGPR::RSP] -= 8;
-						*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
-					}
-					status = true;
-				}
-			}break;
-			};
-		}break;
+				GPR[(int)EGPR::RSP] -= 8;
+				*(UINT64*)GPR[(int)EGPR::RSP] = *(UINT64*)ptr;
+			}
+			status = true;
 		}
 	}break;
 	default:
 		break;
 	}
-
-	if (status)
-		printf("Push");
 
 	return status;
 }

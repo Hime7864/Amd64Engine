@@ -68,7 +68,6 @@ bool AssemblyState::service_jmp()
 				auto imm = *(INT16*)(&RIP[1]);
 				if (state)
 				{
-					Advancement = (UINT64)RIP + 3;
 					RIP += imm + 3;
 				}
 				else
@@ -82,7 +81,6 @@ bool AssemblyState::service_jmp()
 				auto imm = *(INT32*)(&RIP[1]);
 				if (state)
 				{
-					Advancement = (UINT64)RIP + 5;
 					RIP += imm + 5;
 				}
 				else
@@ -98,7 +96,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.OF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2; 
 		}
 		else
@@ -116,7 +113,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -126,7 +122,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		else
@@ -144,7 +139,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -154,7 +148,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 			
 		}
@@ -173,7 +166,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -183,7 +175,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF || FLAGS.ZF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -198,7 +189,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.CF == 0 && FLAGS.ZF == 0)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -213,7 +203,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -232,7 +221,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -242,7 +230,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.PF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -261,7 +248,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -271,7 +257,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.SF != FLAGS.OF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -290,7 +275,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -300,7 +284,6 @@ bool AssemblyState::service_jmp()
 		auto imm = *(INT8*)(&RIP[1]);
 		if (FLAGS.ZF || FLAGS.SF != FLAGS.OF)
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 
 		}
@@ -319,7 +302,6 @@ bool AssemblyState::service_jmp()
 		}
 		else
 		{
-			Advancement = (UINT64)RIP + 2;
 			RIP += imm + 2;
 		}
 		status = true;
@@ -327,14 +309,12 @@ bool AssemblyState::service_jmp()
 	case 0xE9:
 	{
 		auto imm = *(INT32*)(&RIP[1]);
-		Advancement = (UINT64)RIP + 5;
 		RIP += imm + 5;
 		status = true;
 	}break;
 	case 0xEB:
 	{
 		auto imm = *(INT8*)(&RIP[1]);
-		Advancement = (UINT64)RIP + 2;
 		RIP += imm + 2;
 		status = true;
 	}break;
@@ -348,7 +328,6 @@ bool AssemblyState::service_jmp()
 			auto ptr = GetDisplacementPtr();
 			if (ptr)
 			{
-				Advancement = (UINT64)RIP;
 
 				if (Prefix.OperandSize)
 				{
@@ -367,7 +346,6 @@ bool AssemblyState::service_jmp()
 			auto ptr = GetDisplacementPtr();
 			if (ptr)
 			{
-				Advancement = (UINT64)RIP;
 
 				RIP = (BYTE*)*(UINT64*)ptr;
 				status = true;
@@ -376,9 +354,6 @@ bool AssemblyState::service_jmp()
 		}
 	}break;
 	};
-
-	if (status)
-		printf("Jump");
 
 	return status;
 }
