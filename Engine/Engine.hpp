@@ -33,6 +33,9 @@ private:
 	bool service_mul();
 	bool service_div();
 
+	bool service_ins();
+	bool service_outs();
+
 	bool service_adc();
 	bool service_sbb();
 

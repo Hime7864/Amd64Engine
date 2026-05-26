@@ -351,7 +351,7 @@ bool AssemblyState::service_or()
 			{
 				auto src = imm;
 				auto dest = *(UINT32*)ptr;
-
+				
 				auto result = dest | src;
 				*(UINT32*)ptr = result;
 

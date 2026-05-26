@@ -2,19 +2,22 @@
 #include <cstdio>
 #include <cstring>
 
+#include "Services/adc.hpp"
 #include "Services/add.hpp"
 #include "Services/and.hpp"
 #include "Services/bt.hpp"
-#include "Services/setcc.hpp"
 #include "Services/call.hpp"
 #include "Services/cmp.hpp"
-#include "Services/decode.hpp"
 #include "Services/dec.hpp"
+#include "Services/div.hpp"
 #include "Services/inc.hpp"
+#include "Services/ins.hpp"
 #include "Services/jmp.hpp"
 #include "Services/lea.hpp"
 #include "Services/mov.hpp"
+#include "Services/mul.hpp"
 #include "Services/or.hpp"
+#include "Services/outs.hpp"
 #include "Services/pop.hpp"
 #include "Services/push.hpp"
 #include "Services/rcl.hpp"
@@ -24,6 +27,8 @@
 #include "Services/ror.hpp"
 #include "Services/sal.hpp"
 #include "Services/sar.hpp"
+#include "Services/sbb.hpp"
+#include "Services/setcc.hpp"
 #include "Services/shl.hpp"
 #include "Services/shr.hpp"
 #include "Services/stosd.hpp"
@@ -31,6 +36,8 @@
 #include "Services/syscall.hpp"
 #include "Services/test.hpp"
 #include "Services/xor.hpp"
+
+#include "Services/decode.hpp"
 
 UINT64 AssemblyState::GetDisplacementPtr()
 {

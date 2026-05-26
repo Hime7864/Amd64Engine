@@ -5,9 +5,11 @@
 
 void test()
 {
+	
 	auto ptr = VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	VirtualFree(ptr, 0x1000, MEM_RELEASE);
 	printf("Hello world\n");
+	return;
 }
 
 UINT64 __attribute__((naked)) __readgsbase()
@@ -28,7 +30,7 @@ int main()
 
 	while (engine->step())
 	{
-		//engine->log_step();
+		engine->log_step();
 	}
 
 

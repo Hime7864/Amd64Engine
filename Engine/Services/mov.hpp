@@ -466,7 +466,7 @@ bool AssemblyState::service_mov()
 			auto imm = *(UINT32*)(&RIP[0]);
 			if (Prefix.W)
 			{
-				*(UINT64*)ptr = (UINT64)imm;
+				*(UINT64*)ptr = (UINT64)(INT64)(INT32)imm;
 			}
 			else if (!Prefix.OperandSize)
 			{
