@@ -270,19 +270,17 @@ UINT64 AssemblyState::GetDisplacementPtr()
 					//printf("!!!! [rsp + r%i * %i + %x]\n", modrm2->Register, mutiplier, imm);
 
 					RIP += 7;
-					return 0;
+					return ptr;
 				}
 			}
 			else
 			{
-				auto ptr = GPR[modrm_register] + GPR[modrm2_register] * mutiplier + (INT64)imm;
+				auto ptr = GPR[modrm2_register_memory] + GPR[modrm2_register] * mutiplier + (INT64)imm;
 
 				if (Prefix.GS)
 					ptr += GsBase;
 				else if (Prefix.FS)
 					ptr += FsBase;
-
-				//printf("!!!! [r%i + r%i * %i+ %x]\n", modrm->Register, modrm2->Register, mutiplier, imm);
 
 				RIP += 7;
 				return ptr;
@@ -312,6 +310,36 @@ UINT64 AssemblyState::GetDisplacementPtr()
 	}break;
 	};
 	return 0;
+}
+
+bool AssemblyState::get_msb(UINT64 value, UINT8 bits)
+{
+	auto BitMask = 1ULL << (bits - 1);
+	return (value & BitMask);
+}
+
+bool AssemblyState::get_lsb(UINT64 value, UINT8 bits)
+{
+	auto BitMask = 1ULL;
+	return (value & BitMask);
+}
+
+bool AssemblyState::read_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits)
+{
+	auto BitIndex = BitOffset & (bits - 1);
+	auto BitMask = 1ULL << BitIndex;
+	return (BitBase & BitMask) != 0;
+}
+
+void AssemblyState::write_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits, bool State)
+{
+	auto BitIndex = BitOffset & (bits - 1);
+	auto BitMask = 1ULL << BitIndex;
+	if (State)
+		BitBase |= BitMask;
+	else
+		BitBase &= ~BitMask;
+	return;
 }
 
 void AssemblyState::log_ModRM(MODRM* modrm)

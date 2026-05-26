@@ -12,19 +12,22 @@ bool AssemblyState::service_sar()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
 			UINT8 count = RIP[0];
-			UINT8 masked = count & 7;
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
 
-			if (masked)
+			if ((count & countMask) == 1)
 			{
-				auto result = (UINT8)((INT8)dest >> masked);
-				*(UINT8*)ptr = result;
-
-				FLAGS.CF = (dest >> (masked - 1)) & 1;
-				if (masked == 1)
-					FLAGS.OF = (dest >> 7) & 1;
+				FLAGS.OF = 0;
 			}
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_lsb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(INT8*)ptr / 2);
+				tempCount--;
+			}
+			
 			RIP++;
 			status = true;
 		}
@@ -37,50 +40,56 @@ bool AssemblyState::service_sar()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
 				UINT8 count = RIP[0];
-				UINT8 masked = count & 63;
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT64)((INT64)dest >> masked);
-					*(UINT64*)ptr = result;
+					FLAGS.OF = 0;
+				}
 
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 63) & 1;
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(INT64*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
 				UINT8 count = RIP[0];
-				UINT8 masked = count & 31;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT32)((INT32)dest >> masked);
-					*(UINT32*)ptr = result;
+					FLAGS.OF = 0;
+				}
 
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 31) & 1;
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(INT32*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
 				UINT8 count = RIP[0];
-				UINT8 masked = count & 15;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT16)((INT16)dest >> masked);
-					*(UINT16*)ptr = result;
+					FLAGS.OF = 0;
+				}
 
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 15) & 1;
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(INT16*)ptr / 2);
+					tempCount--;
 				}
 			}
 			RIP++;
@@ -93,19 +102,22 @@ bool AssemblyState::service_sar()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
 			UINT8 count = 1;
-			UINT8 masked = count & 7;
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
 
-			if (masked)
+			if ((count & countMask) == 1)
 			{
-				auto result = (UINT8)((INT8)dest >> masked);
-				*(UINT8*)ptr = result;
-
-				FLAGS.CF = (dest >> (masked - 1)) & 1;
-				if (masked == 1)
-					FLAGS.OF = (dest >> 7) & 1;
+				FLAGS.OF = 0;
 			}
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_lsb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(INT8*)ptr / 2);
+				tempCount--;
+			}
+
 			status = true;
 		}
 	}break;
@@ -117,47 +129,56 @@ bool AssemblyState::service_sar()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
 				UINT8 count = 1;
-				UINT8 masked = count & 63;
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT64)((INT64)dest >> masked);
-					*(UINT64*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 63) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(INT64*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
 				UINT8 count = 1;
-				UINT8 masked = count & 31;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT32)((INT32)dest >> masked);
-					*(UINT32*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 31) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(INT32*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
 				UINT8 count = 1;
-				UINT8 masked = count & 15;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT16)((INT16)dest >> masked);
-					*(UINT16*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 15) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(INT16*)ptr / 2);
+					tempCount--;
 				}
 			}
 			status = true;
@@ -169,17 +190,20 @@ bool AssemblyState::service_sar()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
 			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-			UINT8 masked = count & 7;
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
 
-			if (masked)
+			if ((count & countMask) == 1)
 			{
-				auto result = (UINT8)((INT8)dest >> masked);
-				*(UINT8*)ptr = result;
-				FLAGS.CF = (dest >> (masked - 1)) & 1;
-				if (masked == 1)
-					FLAGS.OF = (dest >> 7) & 1;
+				FLAGS.OF = 0;
+			}
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_lsb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(INT8*)ptr / 2);
+				tempCount--;
 			}
 			status = true;
 		}
@@ -192,47 +216,56 @@ bool AssemblyState::service_sar()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
 				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-				UINT8 masked = count & 63;
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT64)((INT64)dest >> masked);
-					*(UINT64*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 63) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(INT64*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
 				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-				UINT8 masked = count & 31;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT32)((INT32)dest >> masked);
-					*(UINT32*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 31) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(INT32*)ptr / 2);
+					tempCount--;
 				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
 				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
-				UINT8 masked = count & 15;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
 
-				if (masked)
+				if ((count & countMask) == 1)
 				{
-					auto result = (UINT16)((INT16)dest >> masked);
-					*(UINT16*)ptr = result;
-					FLAGS.CF = (dest >> (masked - 1)) & 1;
-					if (masked == 1)
-						FLAGS.OF = (dest >> 15) & 1;
+					FLAGS.OF = 0;
+				}
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_lsb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(INT16*)ptr / 2);
+					tempCount--;
 				}
 			}
 			status = true;

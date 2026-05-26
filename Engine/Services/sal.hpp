@@ -12,8 +12,23 @@ bool AssemblyState::service_sal()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
-			auto src = RIP[2];
+			UINT8 count = RIP[0];
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_msb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(UINT8*)ptr * 2);
+				tempCount--;
+			}
+
+			if ((count & countMask) == 1)
+			{
+				FLAGS.OF = get_msb(*(UINT8*)ptr, 8) ^ FLAGS.CF;
+			}
+			RIP++;
+			status = true;
 		}
 	}break;
 	case 0xC1:
@@ -24,19 +39,60 @@ bool AssemblyState::service_sal()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[0];
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(UINT64*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT64*)ptr, 64) ^ FLAGS.CF;
+				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
-				auto src = RIP[2]; 
+				UINT8 count = RIP[0];
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(UINT32*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT32*)ptr, 32) ^ FLAGS.CF;
+				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
-				auto src = RIP[2];
+				UINT8 count = RIP[0];
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(UINT16*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT16*)ptr, 16) ^ FLAGS.CF;
+				}
 			}
+			RIP++;
+			status = true;
 		}
 	}break;
 	case 0xD0:
@@ -45,8 +101,22 @@ bool AssemblyState::service_sal()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
-			auto src = 1;
+			UINT8 count = 1;
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_msb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(UINT8*)ptr * 2);
+				tempCount--;
+			}
+
+			if ((count & countMask) == 1)
+			{
+				FLAGS.OF = get_msb(*(UINT8*)ptr, 8) ^ FLAGS.CF;
+			}
+			status = true;
 		}
 	}break;
 	case 0xD1:
@@ -57,19 +127,59 @@ bool AssemblyState::service_sal()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(UINT64*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT64*)ptr, 64) ^ FLAGS.CF;
+				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
-				auto src = 1; 
+				UINT8 count = 1;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(UINT32*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT32*)ptr, 32) ^ FLAGS.CF;
+				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
-				auto src = 1;
+				UINT8 count = 1;
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(UINT16*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT16*)ptr, 16) ^ FLAGS.CF;
+				}
 			}
+			status = true;
 		}
 	}break;
 	case 0xD2:
@@ -78,8 +188,22 @@ bool AssemblyState::service_sal()
 		auto ptr = GetDisplacementPtr();
 		if (ptr)
 		{
-			auto dest = *(UINT8*)ptr;
-			auto src = *(UINT8*)&GPR[(int)EGPR::RCX];
+			UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+			auto tempCount = count & 0x1F;
+			auto countMask = 0x1F;
+
+			while (tempCount)
+			{
+				FLAGS.CF = get_msb(*(UINT8*)ptr, 8);
+				*(UINT8*)ptr = (*(UINT8*)ptr * 2);
+				tempCount--;
+			}
+
+			if ((count & countMask) == 1)
+			{
+				FLAGS.OF = get_msb(*(UINT8*)ptr, 8) ^ FLAGS.CF;
+			}
+			status = true;
 		}
 	}break;
 	case 0xD3:
@@ -90,23 +214,63 @@ bool AssemblyState::service_sal()
 		{
 			if (Prefix.W)
 			{
-				auto dest = *(UINT64*)ptr;
-				auto src = (UINT64) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				auto tempCount = count & 0x3F;
+				auto countMask = 0x3F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT64*)ptr, 64);
+					*(UINT64*)ptr = (*(UINT64*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT64*)ptr, 64) ^ FLAGS.CF;
+				}
 			}
 			else if (!Prefix.OperandSize)
 			{
-				auto dest = *(UINT32*)ptr;
-				auto src = (UINT32) * (UINT8*)&GPR[(int)EGPR::RCX]; 
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT32*)ptr, 32);
+					*(UINT32*)ptr = (*(UINT32*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT32*)ptr, 32) ^ FLAGS.CF;
+				}
 			}
 			else
 			{
-				auto dest = *(UINT16*)ptr;
-				auto src = (UINT16) * (UINT8*)&GPR[(int)EGPR::RCX];
+				UINT8 count = *(UINT8*)&GPR[(int)EGPR::RCX];
+				auto tempCount = count & 0x1F;
+				auto countMask = 0x1F;
+
+				while (tempCount)
+				{
+					FLAGS.CF = get_msb(*(UINT16*)ptr, 16);
+					*(UINT16*)ptr = (*(UINT16*)ptr * 2);
+					tempCount--;
+				}
+
+				if ((count & countMask) == 1)
+				{
+					FLAGS.OF = get_msb(*(UINT16*)ptr, 16) ^ FLAGS.CF;
+				}
 			}
+			status = true;
 		}
 	}break;
 	}
-	
+
 	return status;
 }
 

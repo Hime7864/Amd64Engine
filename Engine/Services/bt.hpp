@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 bool AssemblyState::service_bt()
 {
 	bool status = false;
@@ -20,27 +22,24 @@ bool AssemblyState::service_bt()
 				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 				if (Prefix.W)
 				{
-					auto bitBase = *(UINT64*)ptr;
-					auto bitOffset = *(UINT64*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x3F;
-					auto bitMask = 1ULL << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
+					FLAGS.CF = read_bit(
+						*(UINT64*)ptr, 
+						*(UINT64*)&GPR[modrm_register], 
+						64);
 				}
 				else if (!Prefix.OperandSize)
 				{
-					auto bitBase = *(UINT32*)ptr;
-					auto bitOffset = *(UINT32*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x1F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0; 
+					FLAGS.CF = read_bit(
+						*(UINT32*)ptr, 
+						*(UINT32*)&GPR[modrm_register], 
+						32);
 				}
 				else
 				{
-					auto bitBase = *(UINT16*)ptr;
-					auto bitOffset = *(UINT16*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x0F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
+					FLAGS.CF = read_bit(
+						*(UINT16*)ptr, 
+						*(UINT16*)&GPR[modrm_register],
+						16);
 				}
 				status = true;
 			}
@@ -54,33 +53,39 @@ bool AssemblyState::service_bt()
 				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 				if (Prefix.W)
 				{
-					auto bitBase = *(UINT64*)ptr;
-					auto bitOffset = *(UINT64*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x3F;
-					auto bitMask = 1ULL << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
-					bitBase |= bitMask;
-					*(UINT64*)ptr = bitBase;
+					FLAGS.CF = read_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64);
+					write_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64,
+						true);
 				}
 				else if (!Prefix.OperandSize)
 				{
-					auto bitBase = *(UINT32*)ptr;
-					auto bitOffset = *(UINT32*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x1F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
-					bitBase |= bitMask;
-					*(UINT64*)ptr = bitBase; 
+					FLAGS.CF = read_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32);
+					write_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32,
+						true);
 				}
 				else
 				{
-					auto bitBase = *(UINT16*)ptr;
-					auto bitOffset = *(UINT16*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x0F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
-					bitBase |= bitMask;
-					*(UINT64*)ptr = bitBase;
+					FLAGS.CF = read_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16);
+					write_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16,
+						true);
 				}
 				status = true;
 			}
@@ -94,36 +99,39 @@ bool AssemblyState::service_bt()
 				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 				if (Prefix.W)
 				{
-					auto bitBase = *(UINT64*)ptr;
-					auto bitOffset = *(UINT64*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x3F;
-					auto bitMask = 1ULL << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
-					bitBase &= ~bitMask;
-					*(UINT64*)ptr = bitBase;
+					FLAGS.CF = read_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64);
+					write_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64,
+						false);
+				}
+				else if (!Prefix.OperandSize)
+				{
+					FLAGS.CF = read_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32);
+					write_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32,
+						false);
 				}
 				else
 				{
-					if (Prefix.OperandSize)
-					{
-						auto bitBase = *(UINT16*)ptr;
-						auto bitOffset = *(UINT16*)&GPR[modrm_register];
-						auto bitIndex = bitOffset & 0x0F;
-						auto bitMask = 1U << bitIndex;
-						FLAGS.CF = (bitBase & bitMask) != 0;
-						bitBase &= ~bitMask;
-						*(UINT16*)ptr = bitBase;
-					}
-					else
-					{
-						auto bitBase = *(UINT32*)ptr;
-						auto bitOffset = *(UINT32*)&GPR[modrm_register];
-						auto bitIndex = bitOffset & 0x1F;
-						auto bitMask = 1U << bitIndex;
-						FLAGS.CF = (bitBase & bitMask) != 0;
-						bitBase &= ~bitMask;
-						*(UINT32*)ptr = bitBase;
-					}
+					FLAGS.CF = read_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16);
+					write_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16,
+						false);
 				}
 				status = true;
 			}
@@ -137,78 +145,105 @@ bool AssemblyState::service_bt()
 				auto imm = *(UINT8*)(&RIP[1]);
 				if (Prefix.W)
 				{
-					auto bitBase = *(UINT64*)ptr;
-					auto bitIndex = imm & 0x3F;
-					auto bitMask = 1ULL << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
+					FLAGS.CF = read_bit(
+						*(UINT64*)ptr,
+						imm,
+						64);
 					switch (modrm->Register)
 					{
 					case 5:
 					{
-						bitBase |= bitMask;
-						*(UINT64*)ptr = bitBase;
+						write_bit(
+							*(UINT64*)ptr,
+							imm,
+							64,
+							true);
 					}break;
 					case 6:
 					{
-						bitBase &= ~bitMask;
-						*(UINT64*)ptr = bitBase;
+						write_bit(
+							*(UINT64*)ptr,
+							imm,
+							64,
+							false);
 					}break;
 					case 7:
 					{
-						bitBase ^= bitMask;
-						*(UINT64*)ptr = bitBase;
+						write_bit(
+							*(UINT64*)ptr,
+							imm,
+							64,
+							!FLAGS.CF);
 					}break;
 					};
 				}
 				else if (!Prefix.OperandSize)
 				{
-					auto bitBase = *(UINT32*)ptr;
-					auto bitIndex = imm & 0x1F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
+					FLAGS.CF = read_bit(
+						*(UINT32*)ptr,
+						imm,
+						32);
 					switch (modrm->Register)
 					{
 					case 5:
 					{
-						bitBase |= bitMask;
-						*(UINT32*)ptr = bitBase;
+						write_bit(
+							*(UINT32*)ptr,
+							imm,
+							32,
+							true);
 					}break;
 					case 6:
 					{
-						bitBase &= ~bitMask;
-						*(UINT32*)ptr = bitBase;
+						write_bit(
+							*(UINT32*)ptr,
+							imm,
+							32,
+							false);
 					}break;
 					case 7:
 					{
-						bitBase ^= bitMask;
-						*(UINT32*)ptr = bitBase;
+						write_bit(
+							*(UINT32*)ptr,
+							imm,
+							32,
+							!FLAGS.CF);
 					}break;
 					};
 				}
 				else
 				{
-					auto bitBase = *(UINT16*)ptr;
-					auto bitIndex = imm & 0x0F;
-					auto bitMask = 1U << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
+					FLAGS.CF = read_bit(
+						*(UINT16*)ptr,
+						imm,
+						16);
 					switch (modrm->Register)
 					{
 					case 5:
 					{
-						bitBase |= bitMask;
-						*(UINT16*)ptr = bitBase;
+						write_bit(
+							*(UINT16*)ptr,
+							imm,
+							16,
+							true);
 					}break;
 					case 6:
 					{
-						bitBase &= ~bitMask;
-						*(UINT16*)ptr = bitBase;
+						write_bit(
+							*(UINT16*)ptr,
+							imm,
+							16,
+							false);
 					}break;
 					case 7:
 					{
-						bitBase ^= bitMask;
-						*(UINT16*)ptr = bitBase;
+						write_bit(
+							*(UINT16*)ptr,
+							imm,
+							16,
+							!FLAGS.CF);
 					}break;
-					}; 
+					};
 				}
 				RIP++;
 				status = true;
@@ -223,36 +258,39 @@ bool AssemblyState::service_bt()
 				auto modrm_register = Prefix.R ? modrm->Register + 8 : modrm->Register;
 				if (Prefix.W)
 				{
-					auto bitBase = *(UINT64*)ptr;
-					auto bitOffset = *(UINT64*)&GPR[modrm_register];
-					auto bitIndex = bitOffset & 0x3F;
-					auto bitMask = 1ULL << bitIndex;
-					FLAGS.CF = (bitBase & bitMask) != 0;
-					bitBase ^= bitMask;
-					*(UINT64*)ptr = bitBase;
+					FLAGS.CF = read_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64);
+					write_bit(
+						*(UINT64*)ptr,
+						*(UINT64*)&GPR[modrm_register],
+						64,
+						!FLAGS.CF);
+				}
+				else if (!Prefix.OperandSize)
+				{
+					FLAGS.CF = read_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32);
+					write_bit(
+						*(UINT32*)ptr,
+						*(UINT32*)&GPR[modrm_register],
+						32,
+						!FLAGS.CF);
 				}
 				else
 				{
-					if (Prefix.OperandSize)
-					{
-						auto bitBase = *(UINT16*)ptr;
-						auto bitOffset = *(UINT16*)&GPR[modrm_register];
-						auto bitIndex = bitOffset & 0x0F;
-						auto bitMask = 1U << bitIndex;
-						FLAGS.CF = (bitBase & bitMask) != 0;
-						bitBase ^= bitMask;
-						*(UINT16*)ptr = bitBase;
-					}
-					else
-					{
-						auto bitBase = *(UINT32*)ptr;
-						auto bitOffset = *(UINT32*)&GPR[modrm_register];
-						auto bitIndex = bitOffset & 0x1F;
-						auto bitMask = 1U << bitIndex;
-						FLAGS.CF = (bitBase & bitMask) != 0;
-						bitBase ^= bitMask;
-						*(UINT32*)ptr = bitBase;
-					}
+					FLAGS.CF = read_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16);
+					write_bit(
+						*(UINT16*)ptr,
+						*(UINT16*)&GPR[modrm_register],
+						16,
+						!FLAGS.CF);
 				}
 				status = true;
 			}

@@ -29,7 +29,7 @@ bool AssemblyState::service_add()
 			p ^= p >> 1;
 
 			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
+			FLAGS.CF = (result < dest);
 			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 			status = true;
@@ -60,7 +60,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 			}
 			else if (!Prefix.OperandSize)
@@ -80,7 +80,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 			}
 			else
@@ -100,7 +100,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 			}
 			status = true;
@@ -129,7 +129,7 @@ bool AssemblyState::service_add()
 			p ^= p >> 1;
 
 			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
+			FLAGS.CF = (result < dest);
 			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 			status = true;
@@ -160,7 +160,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 			}
 			else if (!Prefix.OperandSize)
@@ -180,7 +180,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 			}
 			else
@@ -200,7 +200,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 			}
 			status = true;
@@ -225,7 +225,7 @@ bool AssemblyState::service_add()
 		p ^= p >> 1;
 
 		FLAGS.PF = (p & 1) == 0;
-		FLAGS.CF = (dest < src);
+		FLAGS.CF = (result < dest);
 		FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 		RIP += 2;
@@ -252,7 +252,7 @@ bool AssemblyState::service_add()
 			p ^= p >> 1;
 
 			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
+			FLAGS.CF = (result < dest);
 			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 
 			RIP += 5;
@@ -275,7 +275,7 @@ bool AssemblyState::service_add()
 			p ^= p >> 1;
 
 			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
+			FLAGS.CF = (result < dest);
 			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 
 			RIP += 5;
@@ -304,7 +304,7 @@ bool AssemblyState::service_add()
 			p ^= p >> 1;
 
 			FLAGS.PF = (p & 1) == 0;
-			FLAGS.CF = (dest < src);
+			FLAGS.CF = (result < dest);
 			FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80;
 
 			RIP += 1;
@@ -334,7 +334,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 			}
 			else if (!Prefix.OperandSize)
@@ -354,7 +354,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 			}
 			else
@@ -374,7 +374,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 			}
 		}
@@ -403,7 +403,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000000000000000;
 			}
 			else if (!Prefix.OperandSize)
@@ -423,7 +423,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x80000000;
 			}
 			else
@@ -443,7 +443,7 @@ bool AssemblyState::service_add()
 				p ^= p >> 1;
 
 				FLAGS.PF = (p & 1) == 0;
-				FLAGS.CF = (dest < src);
+				FLAGS.CF = (result < dest);
 				FLAGS.OF = ((~(dest ^ src)) & (dest ^ result)) & 0x8000;
 			}
 			RIP++;

@@ -26,10 +26,10 @@ int main()
 	engine->SetGsBase(__readgsbase());
 	engine->SetRip((PVOID)test);
 
-	do
+	while (engine->step())
 	{
-		engine->log_step();
-	} while (engine->step());
+		//engine->log_step();
+	}
 
 
 	return 0;

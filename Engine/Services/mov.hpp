@@ -326,7 +326,7 @@ bool AssemblyState::service_mov()
 		{
 			GPR[(BYTE)EGPR::RAX] = *(UINT64*)moffs;
 		}
-		if (!Prefix.OperandSize)
+		else if (!Prefix.OperandSize)
 		{
 			GPR[(BYTE)EGPR::RAX] = (UINT64)*(UINT32*)moffs;
 		}
@@ -352,7 +352,7 @@ bool AssemblyState::service_mov()
 		{
 			*(UINT64*)moffs = GPR[(BYTE)EGPR::RAX];
 		}
-		if (!Prefix.OperandSize)
+		else if (!Prefix.OperandSize)
 		{
 			*(UINT64*)moffs = (UINT64)*(UINT32*)&GPR[(BYTE)EGPR::RAX];
 		}
@@ -423,7 +423,7 @@ bool AssemblyState::service_mov()
 	case 0xBF:
 	{
 		auto reg = *RIP & 0x7;
-		if (Prefix.R)
+		if (Prefix.B)
 			reg += 8;
 
 		if (Prefix.W)

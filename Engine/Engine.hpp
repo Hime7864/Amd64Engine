@@ -16,6 +16,12 @@ private:
 	void log_ModRM(MODRM* modrm);
 
 	UINT64 GetDisplacementPtr();
+	
+	bool get_msb(UINT64 value, UINT8 bits);
+	bool get_lsb(UINT64 value, UINT8 bits);
+
+	bool read_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits);
+	void write_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits, bool State);
 
 	bool decode_mnemonic();
 	// basic arithmetic

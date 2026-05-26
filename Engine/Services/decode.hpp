@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+
 bool AssemblyState::decode_mnemonic()
 {
 	bool status = false;
@@ -9,6 +11,7 @@ bool AssemblyState::decode_mnemonic()
 	switch (*RIP)
 	{
 	case 0x90:
+		printf("nop\n");
 		RIP++;
 		return true;
 	};
@@ -128,6 +131,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x04:
 	case 0x05:
 	{
+		printf("add\n");
 		status = service_add();
 	}break;
 	case 0x08:
@@ -137,6 +141,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x0C:
 	case 0x0D:
 	{
+		printf("or\n");
 		status = service_or();
 	}break;
 	case 0x0F:
@@ -145,12 +150,14 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0x05:
 		{
+			printf("syscall\n");
 			status = service_syscall();
 		}break;
 		case 0x10:
 		case 0x11:
 		case 0x12:
 		{
+			printf("movups/movupd\n");
 			status = service_mov();
 		}break;
 		case 0x1F:
@@ -162,12 +169,14 @@ bool AssemblyState::decode_mnemonic()
 			case EMODE::MEM_8_BIT_DISP:
 			case EMODE::MEM_32_BIT_DISP:
 			{
+				printf("nop\n");
 				RIP++;
 				GetDisplacementPtr();
 				return true;
 			}break;
 			case EMODE::REG_TO_REG:
 			{
+				printf("nop\n");
 				RIP += 2;
 				return true;
 			}break;
@@ -190,6 +199,7 @@ bool AssemblyState::decode_mnemonic()
 		case 0x4E:
 		case 0x4F:
 		{
+			printf("cmov\n");
 			status = service_mov();
 		}break;
 		case 0x80:
@@ -209,23 +219,28 @@ bool AssemblyState::decode_mnemonic()
 		case 0x8E:
 		case 0x8F:
 		{
+			printf("jcc near\n");
 			status = service_jmp();
 		}break;
 		case 0xA3:
 		{
+			printf("bt\n");
 			status = service_bt();
 		}break;
 		case 0xAB:
 		{
+			printf("bts\n");
 			status = service_bt();
 		}break;
 		case 0xB3:
 		{
+			printf("btr\n");
 			status = service_bt();
 		}break;
 		case 0xB6:
 		case 0xB7:
 		{
+			printf("movzx\n");
 			status = service_mov();
 		}break;
 		case 0xBA:
@@ -234,16 +249,30 @@ bool AssemblyState::decode_mnemonic()
 			switch (modrm->Register)
 			{
 			case 4:
+			{
+				printf("bt\n");
+				status = service_bt();
+			}break;
 			case 5:
+			{
+				printf("bts\n");
+				status = service_bt();
+			}break;
 			case 6:
+			{
+				printf("btr\n");
+				status = service_bt();
+			}break;
 			case 7:
 			{
+				printf("btc\n");
 				status = service_bt();
 			}break;
 			};
 		}break;
 		case 0xBB:
 		{
+			printf("btc\n");
 			status = service_bt();
 		}break;
 		}
@@ -255,6 +284,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x24:
 	case 0x25:
 	{
+		printf("and\n");
 		status = service_and();
 	}break;
 	case 0x28:
@@ -264,6 +294,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x2C:
 	case 0x2D:
 	{
+		printf("sub\n");
 		status = service_sub();
 	}break;
 	case 0x30:
@@ -273,6 +304,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x34:
 	case 0x35:
 	{
+		printf("xor\n");
 		status = service_xor();
 	}break;
 	case 0x38:
@@ -282,6 +314,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x3C:
 	case 0x3D:
 	{
+		printf("cmp\n");
 		status = service_cmp();
 	}break;
 	case 0x50:
@@ -293,6 +326,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x56:
 	case 0x57:
 	{
+		printf("push\n");
 		status = service_push();
 	}break;
 	case 0x58:
@@ -304,10 +338,12 @@ bool AssemblyState::decode_mnemonic()
 	case 0x5E:
 	case 0x5F:
 	{
+		printf("pop\n");
 		status = service_pop();
 	}break;
 	case 0x63:
 	{
+		printf("movsxd\n");
 		status = service_mov();
 	}break;
 	case 0x70:
@@ -327,6 +363,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x7E:
 	case 0x7F:
 	{
+		printf("jcc short\n");
 		status = service_jmp();
 	}break;
 	case 0x80:
@@ -338,26 +375,32 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0:
 		{
+			printf("add\n");
 			status = service_add();
 		}break;
 		case 1:
 		{
+			printf("or\n");
 			status = service_or();
 		}break;
 		case 4:
 		{
+			printf("and\n");
 			status = service_and();
 		}break;
 		case 5:
 		{
+			printf("sub\n");
 			status = service_sub();
 		}break;
 		case 6:
 		{
+			printf("xor\n");
 			status = service_xor();
 		}break;
 		case 7:
 		{
+			printf("cmp\n");
 			status = service_cmp();
 		}break;
 		};
@@ -365,6 +408,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0x84:
 	case 0x85:
 	{
+		printf("test\n");
 		status = service_test();
 	}break;
 	case 0x88:
@@ -373,26 +417,32 @@ bool AssemblyState::decode_mnemonic()
 	case 0x8B:
 	case 0x8C:
 	{
+		printf("mov\n");
 		status = service_mov();
 	}break;
 	case 0x8D:
 	{
+		printf("lea\n");
 		status = service_lea();
 	}break;
 	case 0x8E:
 	{
+		printf("mov\n");
 		status = service_mov();
 	}break;
 	case 0x8F:
 	{
+		printf("pop\n");
 		status = service_pop();
 	}break;
 	case 0x9C:
 	{
+		printf("pushf\n");
 		status = service_push();
 	}break;
 	case 0x9D:
 	{
+		printf("popf\n");
 		status = service_pop();
 	}break;
 	case 0xA0:
@@ -402,15 +452,18 @@ bool AssemblyState::decode_mnemonic()
 	case 0xA4:
 	case 0xA5:
 	{
+		printf("movs\n");
 		status = service_mov();
 	}break;
 	case 0xA8:
 	case 0xA9:
 	{
+		printf("test\n");
 		status = service_test();
 	}break;
 	case 0xAB:
 	{
+		printf("stosd\n");
 		status = service_stosd();
 	}break;
 	case 0xB0:
@@ -430,6 +483,7 @@ bool AssemblyState::decode_mnemonic()
 	case 0xBE:
 	case 0xBF:
 	{
+		printf("mov\n");
 		status = service_mov();
 	}break;
 	case 0xC0:
@@ -440,45 +494,55 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0:
 		{
+			printf("rol\n");
 			status = service_rol();
 		}break;
 		case 1:
 		{
+			printf("ror\n");
 			status = service_ror();
 		}break;
 		case 2:
 		{
+			printf("rcl\n");
 			status = service_rcl();
 		}break;
 		case 3:
 		{
+			printf("rcr\n");
 			status = service_rcr();
 		}break;
 		case 4:
 		{
+			printf("shl\n");
 			status = service_shl();
 		}break;
 		case 5:
 		{
+			printf("shr\n");
 			status = service_shr();
 		}break;
 		case 6:
 		{
+			printf("sal\n");
 			status = service_shl();
 		}break;
 		case  7:
 		{
+			printf("sar\n");
 			status = service_sar();
 		}break;
 		};
 	}break;
 	case 0xC3:
 	{
+		printf("ret\n");
 		status = service_ret();
 	}break;
 	case 0xC6:
 	case 0xC7:
 	{
+		printf("mov\n");
 		status = service_mov();
 	}break;
 	case 0xD0:
@@ -491,45 +555,55 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0:
 		{
+			printf("rol\n");
 			status = service_rol();
 		}break;
 		case 1:
 		{
+			printf("ror\n");
 			status = service_ror();
 		}break;
 		case 2:
 		{
+			printf("rcl\n");
 			status = service_rcl();
 		}break;
 		case 3:
 		{
+			printf("rcr\n");
 			status = service_rcr();
 		}break;
 		case 4:
 		{
+			printf("shl\n");
 			status = service_shl();
 		}break;
 		case 5:
 		{
+			printf("shr\n");
 			status = service_shr();
 		}break;
 		case 6:
 		{
+			printf("sal\n");
 			status = service_shl();
 		}break;
 		case  7:
 		{
+			printf("sar\n");
 			status = service_sar();
 		}break;
 		};
 	}break;
 	case 0xE8:
 	{
+		printf("call\n");
 		status = service_call();
 	}break;
 	case 0xE9:
 	case 0xEB:
 	{
+		printf("jmp\n");
 		status = service_jmp();
 	}break;
 	case 0xF6:
@@ -540,6 +614,7 @@ bool AssemblyState::decode_mnemonic()
 		case 0:
 		case 1:
 		{
+			printf("test\n");
 			status = service_test();
 		}break;
 		};
@@ -552,6 +627,7 @@ bool AssemblyState::decode_mnemonic()
 		case 0:
 		case 1:
 		{
+			printf("test\n");
 			status = service_test();
 		}break;
 		};
@@ -563,10 +639,12 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0:
 		{
+			printf("inc\n");
 			status = service_inc();
 		}break;
 		case 1:
 		{
+			printf("dec\n");
 			status = service_dec();
 		}break;
 		}
@@ -578,24 +656,29 @@ bool AssemblyState::decode_mnemonic()
 		{
 		case 0:
 		{
+			printf("inc\n");
 			status = service_inc();
 		}break;
 		case 1:
 		{
+			printf("dec\n");
 			status = service_dec();
 		}break;
 		case 2:
 		case 3:
 		{
+			printf("call\n");
 			status = service_call();
 		}break;
 		case 4:
 		case 5:
 		{
+			printf("jmp\n");
 			status = service_jmp();
 		}break;
 		case 6:
 		{
+			printf("push\n");
 			status = service_push();
 		}break;
 		}
@@ -604,6 +687,11 @@ bool AssemblyState::decode_mnemonic()
 
 	if (RIP == 0x0)
 		return true;
+
+	if (!status)
+	{
+		printf("Unknown instruction: %02X %02X\n", RIP[0], RIP[1]);
+	}
 
 	return status;
 }

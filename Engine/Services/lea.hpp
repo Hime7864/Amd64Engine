@@ -14,12 +14,12 @@ bool AssemblyState::service_lea()
 		}
 		else if (!Prefix.OperandSize)
 		{
-			GPR[modrm_register] = 0;
-			*(DWORD*)&GPR[modrm_register] = (DWORD)ptr;
+			
+			GPR[modrm_register] = (UINT64)(UINT32)ptr;
 		}
 		else
 		{
-			*(WORD*)&GPR[modrm_register] = (WORD)ptr;
+			*(UINT32*)&GPR[modrm_register] = (UINT32)(UINT16)ptr;
 		}
 		status = true;
 	}

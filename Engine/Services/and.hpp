@@ -170,7 +170,7 @@ bool AssemblyState::service_and()
 				auto src = *(UINT32*)ptr;
 				auto dest = *(UINT32*)&GPR[modrm_register];
 
-				auto result = dest | src;
+				auto result = dest & src;
 				GPR[modrm_register] = 0;
 				*(UINT32*)&GPR[modrm_register] = result;
 
@@ -191,7 +191,7 @@ bool AssemblyState::service_and()
 				auto src = *(UINT16*)ptr;
 				auto dest = *(UINT16*)&GPR[modrm_register];
 
-				auto result = dest | src;
+				auto result = dest & src;
 				*(UINT16*)&GPR[modrm_register] = result;
 
 				FLAGS.SF = (result & 0x8000) != 0;
