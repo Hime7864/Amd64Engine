@@ -12,19 +12,25 @@ I want to break instructions down into smaller, more basic operations — simila
 
 The long-term goal is to introduce a simple **Intermediate Language (IL)** with a very limited instruction set.
 
-## Example: ROR Instruction
+## Example: ROL Instruction
 
 Instead of handling complex instructions in one large block like this:
 
 ```cpp
-UINT8 masked = count & 7;
-if (masked)
+UINT8 count = RIP[0];
+auto tempCount = (count & 0x1F) % 9;
+auto countMask = 0x1F;
+
+while (tempCount)
 {
-    auto result = (dest >> masked) | (dest << (8 - masked));
-    *(UINT8*)ptr = result;
-    FLAGS.CF = (result >> 7) & 1;
-    if (masked == 1)
-        FLAGS.OF = ((result >> 7) & 1) ^ ((result >> 6) & 1);
+	auto tempCF = get_msb(*(UINT8*)ptr, 8);
+	*(UINT8*)ptr = (*(UINT8*)ptr * 2) + tempCF;
+	tempCount--;
+}
+
+if ((count & countMask) == 1)
+{
+	FLAGS.OF = get_msb(*(UINT8*)ptr, 8) ^ FLAGS.CF;
 }
 ```
 The plan is to decompose it into many smaller, simpler micro-operations while preserving identical behavior.
