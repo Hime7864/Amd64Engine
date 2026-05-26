@@ -63,10 +63,13 @@ private:
 	bool service_shl();
 	bool service_sar();
 
+	bool service_setcc();
+	bool service_bt();
+
 	//special operations
 
 	bool service_stosd();
-	bool service_bt();
+	
 public:
 	UINT64 GetRip();
 	void SetRip(PVOID rip);

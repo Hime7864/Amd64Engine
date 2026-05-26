@@ -153,6 +153,7 @@
     <ClInclude Include="Engine\Services\ror.hpp" />
     <ClInclude Include="Engine\Services\sal.hpp" />
     <ClInclude Include="Engine\Services\sar.hpp" />
+    <ClInclude Include="Engine\Services\setcc.hpp" />
     <ClInclude Include="Engine\Services\shl.hpp" />
     <ClInclude Include="Engine\Services\shr.hpp" />
     <ClInclude Include="Engine\Services\stosd.hpp" />

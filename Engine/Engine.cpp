@@ -5,6 +5,7 @@
 #include "Services/add.hpp"
 #include "Services/and.hpp"
 #include "Services/bt.hpp"
+#include "Services/setcc.hpp"
 #include "Services/call.hpp"
 #include "Services/cmp.hpp"
 #include "Services/decode.hpp"
