@@ -23,8 +23,82 @@ private:
 	bool read_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits);
 	void write_bit(UINT64 BitBase, UINT64 BitOffset, UINT8 bits, bool State);
 
+	void decode_prefixes();
 	bool decode_mnemonic();
-	// basic arithmetic
+	// boolean arithmetic
+
+	bool service_or();
+	bool service_and();
+	bool service_xor();
+	bool service_xchg();
+	bool service_cbw();
+	bool service_cwd();
+	bool service_pushf();
+	bool service_popf();
+	bool service_lahf();
+	bool service_sahf();
+	bool service_mova();
+	bool service_cmps();
+	bool service_stos();
+	bool service_lods();
+	bool service_scas();
+	bool service_leave();
+	bool service_enter();
+	bool service_retf();
+	bool service_int();
+	bool service_into();
+	bool service_iret();
+	bool service_xlat();
+	bool service_fadd();
+	bool service_fmul();
+	bool service_fcom();
+	bool service_fcomp();
+	bool service_fsub();
+	bool service_fsubr();
+	bool service_fdiv();
+	bool service_fdivr();
+	bool service_flw();
+	bool service_fxch();
+	bool service_fst();
+	bool service_fstp();
+
+	// integer arithmetic
+
+	bool service_movsxd();
+	bool service_imul();
+	bool service_jcc();
+
+	bool service_add();
+	bool service_sub();
+	bool service_mul();
+	bool service_div();
+
+	
+	bool service_or();
+	bool service_adc();
+	bool service_sbb();
+	bool service_and();
+	bool service_sub();
+	bool service_xor();
+	bool service_cmp();
+
+	bool service_push();
+	bool service_pop();
+
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+	bool service_add();
+
+
 
 	bool service_add();
 	bool service_sub();

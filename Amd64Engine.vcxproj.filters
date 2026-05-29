@@ -29,84 +29,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Engine\Services\add.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\and.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\call.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\cmp.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\dec.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\inc.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\jmp.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\lea.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\mov.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\or.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\pop.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\push.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\rcl.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\rcr.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\ret.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\rol.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\ror.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\sal.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\sar.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\shl.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\shr.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\stosd.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\sub.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\syscall.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\test.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\xor.hpp">
-      <Filter>Engine\Services</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Services\decode.hpp">
       <Filter>Engine</Filter>
     </ClInclude>
@@ -116,8 +38,26 @@
     <ClInclude Include="Engine\structures.hpp">
       <Filter>Engine</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Services\bt.hpp">
-      <Filter>Engine\Services</Filter>
+    <ClInclude Include="Engine\Services\adc.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\div.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\ins.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\mul.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\outs.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\sbb.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Services\setcc.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
