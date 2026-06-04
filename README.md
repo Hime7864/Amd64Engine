@@ -1,6 +1,6 @@
 # x86 Emulator / Micro-Op Decoder
 
-**Work in Progress** — Currently only targeting CPL > 0 opcodes. Actively refactoring the codebase.
+**Work in Progress** — Currently only targeting CPL > 0 opcodes. Actively refactoring the codebase. Currently working on another project however I'm now thinking on changing the approach once more we will see
 
 ## Current Goal
 
