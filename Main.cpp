@@ -1,38 +1,52 @@
-#include <Windows.h>
-#include <stdio.h>
+#include <algorithm>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
-#include "Engine.hpp"
+#include "Binary/Binary.hpp"
+#include "Disasm/ZydisWrapper.hpp"
 
-void test()
+struct IRInstruction
 {
-	
-	auto ptr = VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	VirtualFree(ptr, 0x1000, MEM_RELEASE);
-	printf("Hello world\n");
-	return;
-}
 
-UINT64 __attribute__((naked)) __readgsbase()
+};
+
+struct Instruction
 {
-	__asm {
-		mov rax, gs:[0x30]
-		ret
-	}
-}
+	std::vector<IRInstruction> ir;
+	uint64_t rip = 0;
+};
+
+struct BasicBlock
+{
+	BasicBlock* pathA = nullptr;
+	BasicBlock* pathB = nullptr;
+	std::vector<Instruction> amd64;
+	bool scan_complete = false;
+	bool scan_paused = false;
+};
+
+class ControlFlowGraph
+{
+public:
+
+	std::vector<BasicBlock> workload;
+};
+
 
 int main()
 {
-	auto engine = new AssemblyState();
+	auto binary = Binary::Load(L"C:\\Users\\Admin\\Desktop\\EfiLoader.exe");
+	if (!binary)
+		return -1;
 
-	engine->SetGPR((int)EGPR::RSP, (UINT64)VirtualAlloc(nullptr, 0x20000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) + 0x10000);
-	engine->SetGsBase(__readgsbase());
-	engine->SetRip((PVOID)test);
+	auto start_rip = binary->GetStartup();
+	if (!start_rip)
+		return -1;
 
-	while (engine->step())
-	{
-		engine->log_step();
-	}
-
-
+	delete binary;
 	return 0;
 }
