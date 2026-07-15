@@ -9,14 +9,12 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Engine">
-      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</UniqueIdentifier>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Engine\Binary">
-      <UniqueIdentifier>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Disasm">
-      <UniqueIdentifier>{C3D4E5F6-A7B8-9012-CDEF-123456789012}</UniqueIdentifier>
+    <Filter Include="Source Files\Binary">
+      <UniqueIdentifier>{a1b2c3d4-e5f6-7890-abcd-ef1234567890}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -24,56 +22,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Binary\Binary.cpp">
-      <Filter>Engine\Binary</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Binary\PeImage.cpp">
-      <Filter>Engine\Binary</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Disasm\ZydisWrapper.cpp">
-      <Filter>Engine\Disasm</Filter>
+      <Filter>Source Files\Binary</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-<<<<<<< Updated upstream
-    <ClInclude Include="Engine\Services\decode.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Engine.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\structures.hpp">
-      <Filter>Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\adc.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\div.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\ins.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\mul.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\outs.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\sbb.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Services\setcc.hpp">
-      <Filter>Header Files</Filter>
-=======
     <ClInclude Include="Engine\Binary\Binary.hpp">
-      <Filter>Engine\Binary</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Binary\PeImage.hpp">
-      <Filter>Engine\Binary</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Disasm\ZydisWrapper.hpp">
-      <Filter>Engine\Disasm</Filter>
->>>>>>> Stashed changes
+      <Filter>Source Files\Binary</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
